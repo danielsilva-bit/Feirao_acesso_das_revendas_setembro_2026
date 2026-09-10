@@ -1424,18 +1424,25 @@ function computeLogsSeriesByDate(rows) {
       buckets[dayKey] = {
         sortKey: new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(),
         label: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'),
-        acessos: 0,
+        acessosUsadosbr: 0,
+        acessosC6: 0,
         atividades: 0
       };
     }
     const rawAcao = logsAcaoIdx !== -1 ? row[logsAcaoIdx] : '';
-    if (normalizeKey(rawAcao) === 'acesso') buckets[dayKey].acessos++;
-    else buckets[dayKey].atividades++;
+    if (normalizeKey(rawAcao) === 'acesso') {
+      const email = logsEmailIdx !== -1 ? row[logsEmailIdx] : '';
+      if (isUsadosbrEmail(email)) buckets[dayKey].acessosUsadosbr++;
+      else buckets[dayKey].acessosC6++;
+    } else {
+      buckets[dayKey].atividades++;
+    }
   });
   const keys = Object.keys(buckets).sort(function (a, b) { return buckets[a].sortKey - buckets[b].sortKey; });
   return {
     labels: keys.map(function (k) { return buckets[k].label; }),
-    acessos: keys.map(function (k) { return buckets[k].acessos; }),
+    acessosUsadosbr: keys.map(function (k) { return buckets[k].acessosUsadosbr; }),
+    acessosC6: keys.map(function (k) { return buckets[k].acessosC6; }),
     atividades: keys.map(function (k) { return buckets[k].atividades; })
   };
 }
@@ -1444,13 +1451,24 @@ function computeLogsSeriesByDate(rows) {
 // de validação da skill de dataviz — ΔE normal-vision 29.7, sem falha de
 // croma/contraste). Mantido separado do azul --steel usado no resto da UI
 // (esse é mais dessaturado e falha o piso de croma pra uma marca de gráfico).
-const LOGS_CHART_BAR_COLOR = '#2657A6';
-const LOGS_CHART_LINE_COLOR = '#A9822C';
+// Reajustado em 10/09/2026 pra 3 séries (2 barras + 1 linha) — rodei o
+// validate_palette.js de novo com os 3 juntos, ΔE normal-vision mínimo 24.4,
+// todos os checks passando.
+const LOGS_CHART_USADOSBR_COLOR = '#A9822C'; // mesma cor de marca do card "Usadosbr"
+const LOGS_CHART_C6_COLOR = '#2657A6';       // mesma família do azul do card "C6 Bank"
+const LOGS_CHART_ATIVIDADES_COLOR = '#B32D6E'; // magenta — de propósito distinto do verde/vermelho de status (Com/Sem Estoque), pra não sugerir "bom/ruim" por engano
+const LOGS_DATALABEL_FONT = { family: 'IBM Plex Mono', weight: '600', size: 11 };
+// Rótulos de dados sempre em tinta neutra (--ink), nunca na cor da série:
+// a cor do rótulo em cima de fundo branco (não da barra) fica ilegível pra
+// tons mais claros como o dourado — texto sempre em tinta é o jeito mais
+// seguro de garantir contraste nas 3 séries ao mesmo tempo.
+const LOGS_DATALABEL_COLOR = '#14151A';
 
 function updateLogsChart(rows) {
   const canvas = document.getElementById('chart-logs-acessos');
   if (!canvas || typeof Chart === 'undefined') return;
   const series = computeLogsSeriesByDate(rows);
+  const hideZero = function (value) { return value > 0 ? value : ''; };
 
   if (charts['chart-logs-acessos']) charts['chart-logs-acessos'].destroy();
   charts['chart-logs-acessos'] = new Chart(canvas.getContext('2d'), {
@@ -1459,24 +1477,57 @@ function updateLogsChart(rows) {
       datasets: [
         {
           type: 'bar',
-          label: 'Acessos',
-          data: series.acessos,
-          backgroundColor: LOGS_CHART_BAR_COLOR,
+          label: 'Acessos Usadosbr',
+          data: series.acessosUsadosbr,
+          backgroundColor: LOGS_CHART_USADOSBR_COLOR,
           borderRadius: 4,
-          maxBarThickness: 42,
-          order: 2
+          maxBarThickness: 28,
+          order: 3,
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            offset: 2,
+            color: LOGS_DATALABEL_COLOR,
+            font: LOGS_DATALABEL_FONT,
+            formatter: hideZero
+          }
+        },
+        {
+          type: 'bar',
+          label: 'Acessos C6 Bank',
+          data: series.acessosC6,
+          backgroundColor: LOGS_CHART_C6_COLOR,
+          borderRadius: 4,
+          maxBarThickness: 28,
+          order: 2,
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            offset: 2,
+            color: LOGS_DATALABEL_COLOR,
+            font: LOGS_DATALABEL_FONT,
+            formatter: hideZero
+          }
         },
         {
           type: 'line',
           label: 'Atividades (download / envio)',
           data: series.atividades,
-          borderColor: LOGS_CHART_LINE_COLOR,
-          backgroundColor: LOGS_CHART_LINE_COLOR,
+          borderColor: LOGS_CHART_ATIVIDADES_COLOR,
+          backgroundColor: LOGS_CHART_ATIVIDADES_COLOR,
           borderWidth: 2,
           pointRadius: 3,
-          pointBackgroundColor: LOGS_CHART_LINE_COLOR,
+          pointBackgroundColor: LOGS_CHART_ATIVIDADES_COLOR,
           tension: 0.25,
-          order: 1
+          order: 1,
+          datalabels: {
+            anchor: 'end',
+            align: 'bottom',
+            offset: 6,
+            color: LOGS_DATALABEL_COLOR,
+            font: LOGS_DATALABEL_FONT,
+            formatter: hideZero
+          }
         }
       ]
     },
@@ -1484,15 +1535,17 @@ function updateLogsChart(rows) {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
+      layout: { padding: { top: 16 } },
       scales: {
         x: { grid: { display: false } },
         y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
       },
       plugins: {
         legend: { position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
-        title: { display: true, text: 'Acessos e atividades por data', font: { family: 'Space Grotesk', size: 13 } }
+        title: { display: true, text: 'Acessos (Usadosbr x C6 Bank) e atividades por data', font: { family: 'Space Grotesk', size: 13 } }
       }
-    }
+    },
+    plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
   });
 }
 
