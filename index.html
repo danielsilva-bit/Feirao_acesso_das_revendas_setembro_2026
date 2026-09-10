@@ -385,6 +385,65 @@
     height: 280px;
     box-shadow: 0 1px 2px rgba(20,21,26,.04);
   }
+  .chart-box-wide { max-width: 100%; height: 320px; }
+
+  /* ==== Cards de contadores (aba Logs de Acesso) ==== */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--gray);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 1px 2px rgba(20,21,26,.04);
+  }
+  .stat-card-usadosbr { border-left-color: var(--gold); }
+  .stat-card-c6 { border-left-color: var(--steel); }
+  .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .stat-pct {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+    min-height: 16px;
+  }
+  .stat-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .stat-chip {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--steel);
+    background: var(--steel-bg);
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .stat-empty { font-size: 12px; color: var(--muted); }
 
   #results-count {
     font-size: 12px;
@@ -500,9 +559,43 @@
         <label>Buscar (e-mail ou ação)</label>
         <input type="text" id="logs-search" placeholder="Digite para buscar..." />
       </div>
+      <div class="field">
+        <label>De</label>
+        <input type="date" id="logs-date-from" />
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="date" id="logs-date-to" />
+      </div>
       <div class="actions">
         <button class="btn btn-gold" id="logs-refresh-btn">↻ Atualizar</button>
+        <button class="btn btn-secondary" id="logs-clear-period-btn">Limpar período</button>
       </div>
+    </div>
+
+    <div class="charts-heading">Indicadores (seguem a busca e o período selecionado)</div>
+    <div class="stats-grid">
+      <div class="stat-card" id="stat-geral">
+        <div class="stat-label">Total de Acessos</div>
+        <div class="stat-value" id="stat-geral-value">0</div>
+        <div class="stat-pct" id="stat-geral-pct"></div>
+        <div class="stat-breakdown" id="stat-geral-breakdown"></div>
+      </div>
+      <div class="stat-card stat-card-usadosbr" id="stat-usadosbr">
+        <div class="stat-label">Usadosbr</div>
+        <div class="stat-value" id="stat-usadosbr-value">0</div>
+        <div class="stat-pct" id="stat-usadosbr-pct"></div>
+        <div class="stat-breakdown" id="stat-usadosbr-breakdown"></div>
+      </div>
+      <div class="stat-card stat-card-c6" id="stat-c6">
+        <div class="stat-label">C6 Bank</div>
+        <div class="stat-value" id="stat-c6-value">0</div>
+        <div class="stat-pct" id="stat-c6-pct"></div>
+        <div class="stat-breakdown" id="stat-c6-breakdown"></div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-box chart-box-wide"><canvas id="chart-logs-acessos"></canvas></div>
     </div>
 
     <div id="logs-results-count"></div>
@@ -643,6 +736,19 @@ let charts = {};
 let logsHeaders = [];
 let logsRowsFull = [];
 let logsLoaded = false;
+// Índices das colunas Data/E-mail/Ação em logsHeaders, resolvidos dinamicamente
+// em loadLogs() (a posição/nome exato pode variar; ver normalizeKey()).
+let logsDateIdx = -1;
+let logsEmailIdx = -1;
+let logsAcaoIdx = -1;
+
+// Domínio que classifica um acesso como "Usadosbr" nos cards da aba Logs;
+// qualquer e-mail que não termine assim é tratado como "C6 Bank" (pedido do
+// usuário em 10/09/2026 — só essas duas categorias existem, sem meio-termo).
+const USADOSBR_EMAIL_SUFFIX = '@usadosbr.com';
+function isUsadosbrEmail(email) {
+  return (email || '').toString().trim().toLowerCase().endsWith(USADOSBR_EMAIL_SUFFIX);
+}
 
 /* ==================== SESSÃO (localStorage, expira por dia) ==================== */
 function todayStr() { return new Date().toISOString().split('T')[0]; }
@@ -1167,10 +1273,15 @@ async function loadLogs() {
     logsHeaders = (rows[0] || []).map(function (h) { return (h || '').trim(); });
     const dataRows = rows.slice(1).filter(function (r) { return r.some(function (c) { return (c || '').trim() !== ''; }); });
 
+    // Resolve as colunas por nome (ignorando acento/maiúscula) em vez de
+    // posição fixa — mais resistente a uma coluna nova aparecer no meio.
+    logsDateIdx = logsHeaders.findIndex(function (h) { return normalizeKey(h) === 'data'; });
+    logsEmailIdx = logsHeaders.findIndex(function (h) { return normalizeKey(h) === 'e-mail' || normalizeKey(h) === 'email'; });
+    logsAcaoIdx = logsHeaders.findIndex(function (h) { return normalizeKey(h) === 'acao'; });
+
     // Mais recente primeiro (coluna "Data" no formato DD/MM/AAAA HH:mm:ss)
-    const dateIdx = logsHeaders.findIndex(function (h) { return h.toLowerCase() === 'data'; });
     dataRows.sort(function (a, b) {
-      return parseLogDate(b[dateIdx]) - parseLogDate(a[dateIdx]);
+      return parseLogDate(b[logsDateIdx]) - parseLogDate(a[logsDateIdx]);
     });
 
     logsRowsFull = dataRows;
@@ -1190,6 +1301,13 @@ function parseLogDate(str) {
   return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0)).getTime();
 }
 
+// Normaliza texto pra comparar nomes de coluna/valores de ação sem se
+// importar com acento, maiúscula/minúscula ou espaço nas pontas (ex.:
+// "Ação", "AÇÃO", "acao " todos viram "acao").
+function normalizeKey(s) {
+  return (s || '').toString().trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function buildLogsTableHead() {
   const tr = document.getElementById('logs-table-head');
   tr.innerHTML = '';
@@ -1200,11 +1318,180 @@ function buildLogsTableHead() {
   });
 }
 
+// Busca por texto (todas as colunas) + filtro de período (coluna Data),
+// os dois combinados. O período também limita os cards de contadores e o
+// gráfico de acessos/atividades por data logo abaixo.
 function getFilteredLogsRows() {
   const search = document.getElementById('logs-search').value.trim().toLowerCase();
-  if (!search) return logsRowsFull;
+  const fromStr = document.getElementById('logs-date-from').value; // yyyy-mm-dd (input type=date)
+  const toStr = document.getElementById('logs-date-to').value;
+  const fromT = fromStr ? new Date(fromStr + 'T00:00:00').getTime() : null;
+  const toT = toStr ? new Date(toStr + 'T23:59:59').getTime() : null;
+
   return logsRowsFull.filter(function (row) {
-    return row.join(' ').toLowerCase().indexOf(search) !== -1;
+    if (search && row.join(' ').toLowerCase().indexOf(search) === -1) return false;
+    if ((fromT !== null || toT !== null)) {
+      if (logsDateIdx === -1) return false;
+      const t = parseLogDate(row[logsDateIdx]);
+      if (t === -Infinity) return false; // data não reconhecida: exclui só quando o filtro de período está ativo
+      if (fromT !== null && t < fromT) return false;
+      if (toT !== null && t > toT) return false;
+    }
+    return true;
+  });
+}
+
+/* ==================== CARDS DE CONTADORES (Logs de Acesso) ====================
+   Regra pedida pelo usuário em 10/09/2026: qualquer e-mail terminado em
+   "@usadosbr.com" conta como "Usadosbr"; todo o resto conta como "C6 Bank"
+   (não existe 3ª categoria). O número grande de cada card é a contagem de
+   ações "acesso" (login) — os outros tipos de ação (download, envio de
+   e-mail etc.) aparecem como "atividades" na lista abaixo do número, para
+   não confundir "quantas vezes entraram" com "quantas ações fizeram". */
+function computeLogsStats(rows) {
+  const groups = {
+    geral: { total: 0, actions: {}, labels: {} },
+    usadosbr: { total: 0, actions: {}, labels: {} },
+    c6: { total: 0, actions: {}, labels: {} }
+  };
+  function bump(group, rawAcao) {
+    const label = (rawAcao || '').toString().trim() || '(sem ação)';
+    const key = normalizeKey(label);
+    group.actions[key] = (group.actions[key] || 0) + 1;
+    if (!group.labels[key]) group.labels[key] = label;
+    if (key === 'acesso') group.total++;
+  }
+  rows.forEach(function (row) {
+    const rawAcao = logsAcaoIdx !== -1 ? row[logsAcaoIdx] : '';
+    const email = logsEmailIdx !== -1 ? row[logsEmailIdx] : '';
+    const grupo = isUsadosbrEmail(email) ? groups.usadosbr : groups.c6;
+    bump(groups.geral, rawAcao);
+    bump(grupo, rawAcao);
+  });
+  return groups;
+}
+
+function fillStatCard(prefix, group, totalForPct) {
+  document.getElementById('stat-' + prefix + '-value').textContent = group.total.toLocaleString('pt-BR');
+
+  const pctEl = document.getElementById('stat-' + prefix + '-pct');
+  if (totalForPct !== null) {
+    const pct = totalForPct > 0 ? (group.total / totalForPct * 100) : 0;
+    pctEl.textContent = pct.toFixed(1).replace('.', ',') + '% do total de acessos';
+  } else {
+    pctEl.textContent = '';
+  }
+
+  const breakdownEl = document.getElementById('stat-' + prefix + '-breakdown');
+  breakdownEl.innerHTML = '';
+  const keys = Object.keys(group.actions).sort(function (a, b) { return group.actions[b] - group.actions[a]; });
+  if (keys.length === 0) {
+    const span = document.createElement('span');
+    span.className = 'stat-empty';
+    span.textContent = 'Sem atividades no período.';
+    breakdownEl.appendChild(span);
+    return;
+  }
+  keys.forEach(function (key) {
+    const span = document.createElement('span');
+    span.className = 'stat-chip';
+    span.textContent = group.labels[key] + ': ' + group.actions[key];
+    breakdownEl.appendChild(span);
+  });
+}
+
+function updateLogsStats(rows) {
+  const stats = computeLogsStats(rows);
+  fillStatCard('geral', stats.geral, null);
+  fillStatCard('usadosbr', stats.usadosbr, stats.geral.total);
+  fillStatCard('c6', stats.c6, stats.geral.total);
+}
+
+/* ==================== GRÁFICO: acessos x atividades por data ====================
+   Barra = ações "acesso" (login) no dia. Linha = todo o resto (download de
+   relatório/Excel/CSV, envio por e-mail e futuras ações do Code.gs) — é a
+   leitura de "atividade" que o usuário pediu, separada do simples login. */
+function computeLogsSeriesByDate(rows) {
+  const buckets = {};
+  rows.forEach(function (row) {
+    if (logsDateIdx === -1) return;
+    const t = parseLogDate(row[logsDateIdx]);
+    if (t === -Infinity) return;
+    const d = new Date(t);
+    const dayKey = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    if (!buckets[dayKey]) {
+      buckets[dayKey] = {
+        sortKey: new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(),
+        label: String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0'),
+        acessos: 0,
+        atividades: 0
+      };
+    }
+    const rawAcao = logsAcaoIdx !== -1 ? row[logsAcaoIdx] : '';
+    if (normalizeKey(rawAcao) === 'acesso') buckets[dayKey].acessos++;
+    else buckets[dayKey].atividades++;
+  });
+  const keys = Object.keys(buckets).sort(function (a, b) { return buckets[a].sortKey - buckets[b].sortKey; });
+  return {
+    labels: keys.map(function (k) { return buckets[k].label; }),
+    acessos: keys.map(function (k) { return buckets[k].acessos; }),
+    atividades: keys.map(function (k) { return buckets[k].atividades; })
+  };
+}
+
+// Par de cores validado pro par categórico bar+linha deste gráfico (script
+// de validação da skill de dataviz — ΔE normal-vision 29.7, sem falha de
+// croma/contraste). Mantido separado do azul --steel usado no resto da UI
+// (esse é mais dessaturado e falha o piso de croma pra uma marca de gráfico).
+const LOGS_CHART_BAR_COLOR = '#2657A6';
+const LOGS_CHART_LINE_COLOR = '#A9822C';
+
+function updateLogsChart(rows) {
+  const canvas = document.getElementById('chart-logs-acessos');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const series = computeLogsSeriesByDate(rows);
+
+  if (charts['chart-logs-acessos']) charts['chart-logs-acessos'].destroy();
+  charts['chart-logs-acessos'] = new Chart(canvas.getContext('2d'), {
+    data: {
+      labels: series.labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Acessos',
+          data: series.acessos,
+          backgroundColor: LOGS_CHART_BAR_COLOR,
+          borderRadius: 4,
+          maxBarThickness: 42,
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'Atividades (download / envio)',
+          data: series.atividades,
+          borderColor: LOGS_CHART_LINE_COLOR,
+          backgroundColor: LOGS_CHART_LINE_COLOR,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: LOGS_CHART_LINE_COLOR,
+          tension: 0.25,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
+        title: { display: true, text: 'Acessos e atividades por data', font: { family: 'Space Grotesk', size: 13 } }
+      }
+    }
   });
 }
 
@@ -1224,6 +1511,9 @@ function renderLogsTable() {
   });
   document.getElementById('logs-results-count').textContent =
     rows.length + ' de ' + logsRowsFull.length + ' registro(s)';
+
+  updateLogsStats(rows);
+  updateLogsChart(rows);
 }
 
 function showLogsStatus(msg, type) {
@@ -1234,7 +1524,14 @@ function showLogsStatus(msg, type) {
 }
 
 document.getElementById('logs-search').addEventListener('input', renderLogsTable);
+document.getElementById('logs-date-from').addEventListener('change', renderLogsTable);
+document.getElementById('logs-date-to').addEventListener('change', renderLogsTable);
 document.getElementById('logs-refresh-btn').addEventListener('click', loadLogs);
+document.getElementById('logs-clear-period-btn').addEventListener('click', function () {
+  document.getElementById('logs-date-from').value = '';
+  document.getElementById('logs-date-to').value = '';
+  renderLogsTable();
+});
 </script>
 
 </body>
