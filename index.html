@@ -202,6 +202,97 @@
   }
   #search-field input { min-width: 240px; }
 
+  /* ==== Filtros com múltipla seleção (dropdown de checkboxes) ==== */
+  .msel {
+    position: relative;
+    min-width: 160px;
+  }
+  .msel-btn {
+    width: 100%;
+    text-align: left;
+    padding: 8px 26px 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    background: white url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M0 0l5 6 5-6z" fill="%236B7280"/></svg>') no-repeat right 10px center;
+    color: var(--text);
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .msel.msel-active .msel-btn {
+    border-color: var(--steel);
+    color: var(--steel);
+    background-color: var(--steel-bg);
+    font-weight: 600;
+  }
+  .msel-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 20;
+    min-width: 220px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(20,21,26,.14);
+    padding: 6px;
+  }
+  .msel.msel-open .msel-panel { display: block; }
+  .msel-panel-actions {
+    display: flex;
+    gap: 6px;
+    padding: 2px 2px 8px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .msel-action {
+    flex: 1;
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--gray-bg);
+    color: var(--brand);
+    border-radius: 6px;
+    padding: 5px 6px;
+    cursor: pointer;
+  }
+  .msel-action:hover { opacity: .8; }
+  .msel-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: normal;
+  }
+  /* Sobrescreve ".field label" (fonte mono, maiúsculas, letter-spacing do
+     rótulo do campo) — precisa de duas classes (".field .msel-option") pra
+     ganhar em especificidade de ".field label", já que este <label> é o
+     item de uma opção marcável dentro do painel, não o rótulo do campo. */
+  .field .msel-option {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text);
+    font-weight: 400;
+  }
+  .msel-option:hover { background: var(--gray-bg); }
+  /* No celular, ".field input { width:100%; min-width:0 }" (regra de
+     responsividade) também bate num checkbox porque ele é um <input>
+     dentro de ".field" — sem isso o checkbox estica pra 100% da linha e
+     empurra o texto da opção pra fora da área visível do painel. */
+  .msel-option input[type="checkbox"] { flex: none; width: 16px; min-width: 16px; }
+  .msel-empty { padding: 8px 6px; font-size: 12px; color: var(--muted); }
+
   .actions {
     margin-left: auto;
     display: flex;
@@ -306,6 +397,8 @@
     .toolbar { padding: 14px; gap: 10px; }
     .field, #search-field { width: 100%; }
     .field input, .field select, #search-field input { min-width: 0; width: 100%; }
+    .msel { width: 100%; min-width: 0; }
+    .msel-panel { min-width: 0; width: 100%; }
     .actions { margin-left: 0; width: 100%; }
     .actions .btn { flex: 1 1 auto; justify-content: center; }
 
@@ -510,23 +603,23 @@
       </div>
       <div class="field">
         <label>GP</label>
-        <select id="f-gp"><option value="">Todos</option></select>
+        <div class="msel" id="f-gp"></div>
       </div>
       <div class="field">
         <label>GN</label>
-        <select id="f-gn"><option value="">Todos</option></select>
+        <div class="msel" id="f-gn"></div>
       </div>
       <div class="field">
         <label>Faixa Estoque</label>
-        <select id="f-faixa-estoque"><option value="">Todas</option></select>
+        <div class="msel" id="f-faixa-estoque"></div>
       </div>
       <div class="field">
         <label>Faixa de Atualização</label>
-        <select id="f-faixa-atualizacao"><option value="">Todas</option></select>
+        <div class="msel" id="f-faixa-atualizacao"></div>
       </div>
       <div class="field">
         <label>Comercial</label>
-        <select id="f-comercial"><option value="">Todos</option></select>
+        <div class="msel" id="f-comercial"></div>
       </div>
 
       <div class="actions">
@@ -653,6 +746,30 @@ const FILTER_COLUMNS = {
   'f-faixa-atualizacao': 'Faixa de Atualização',
   'f-comercial': 'Comercial'
 };
+
+// Cada filtro da toolbar agora aceita múltiplos valores marcados ao mesmo
+// tempo (ex.: mais de um GP, mais de uma Faixa de Estoque). Conjunto vazio
+// = "Todos" (sem restrição nesse filtro); os filtros continuam combinados
+// por E entre si (GP escolhido E Faixa Estoque escolhida), só que agora
+// dentro de um mesmo filtro os valores marcados combinam por OU.
+const filterSelections = {};
+Object.keys(FILTER_COLUMNS).forEach(function (id) { filterSelections[id] = new Set(); });
+
+// Monta o esqueleto (botão + painel de checkboxes) de um filtro de múltipla
+// seleção dentro do <div class="msel" id="..."> que já existe no HTML.
+function createMultiSelect(selectId) {
+  const container = document.getElementById(selectId);
+  if (!container) return;
+  container.innerHTML =
+    '<button type="button" class="msel-btn">Todos</button>' +
+    '<div class="msel-panel">' +
+      '<div class="msel-panel-actions">' +
+        '<button type="button" class="msel-action msel-select-all">Selecionar todos</button>' +
+        '<button type="button" class="msel-action msel-clear">Limpar</button>' +
+      '</div>' +
+      '<div class="msel-options"></div>' +
+    '</div>';
+}
 
 // Coluna "Senha": quando o valor for exatamente "Resetar Senha", a célula
 // vira um botão com esse texto, abrindo o console de redefinição.
@@ -1005,15 +1122,30 @@ function buildTableHead() {
   });
 }
 
+// Atualiza o texto do botão do filtro conforme quantos valores estão
+// marcados: nenhum = "Todos"; um só = mostra o próprio valor; vários =
+// "N selecionados". Também destaca visualmente o filtro quando está ativo.
+function updateMultiSelectButton(selectId) {
+  const container = document.getElementById(selectId);
+  if (!container) return;
+  const btn = container.querySelector('.msel-btn');
+  const sel = filterSelections[selectId];
+  if (!sel || sel.size === 0) {
+    btn.textContent = 'Todos';
+  } else if (sel.size === 1) {
+    btn.textContent = Array.from(sel)[0];
+  } else {
+    btn.textContent = sel.size + ' selecionados';
+  }
+  container.classList.toggle('msel-active', sel && sel.size > 0);
+}
+
 function populateFilterOptions() {
   Object.keys(FILTER_COLUMNS).forEach(function (selectId) {
     const colName = FILTER_COLUMNS[selectId];
     const colIndex = allHeaders.indexOf(colName);
-    const select = document.getElementById(selectId);
-    if (colIndex === -1) return;
-
-    const currentValue = select.value;
-    select.innerHTML = '<option value="">Todos</option>';
+    const container = document.getElementById(selectId);
+    if (colIndex === -1 || !container) return;
 
     const values = new Set();
     allRows.forEach(function (row) {
@@ -1021,15 +1153,41 @@ function populateFilterOptions() {
       if (v !== '' && v !== null && v !== undefined) values.add(String(v));
     });
 
-    Array.from(values).sort(function (a, b) {
-      return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
-    }).forEach(function (v) {
-      const opt = document.createElement('option');
-      opt.value = v;
-      opt.textContent = v;
-      select.appendChild(opt);
+    // Mantém marcados só os valores que continuam existindo nos dados
+    // atuais (ex.: depois de um "Atualizar" que mudou a planilha).
+    const currentSel = filterSelections[selectId];
+    Array.from(currentSel).forEach(function (v) {
+      if (!values.has(v)) currentSel.delete(v);
     });
-    select.value = currentValue;
+
+    const sortedValues = Array.from(values).sort(function (a, b) {
+      return a.localeCompare(b, 'pt-BR', { sensitivity: 'base' });
+    });
+
+    const optionsWrap = container.querySelector('.msel-options');
+    optionsWrap.innerHTML = '';
+    if (sortedValues.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'msel-empty';
+      empty.textContent = 'Nenhuma opção disponível';
+      optionsWrap.appendChild(empty);
+    } else {
+      sortedValues.forEach(function (v) {
+        const label = document.createElement('label');
+        label.className = 'msel-option';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = v;
+        checkbox.checked = currentSel.has(v);
+        const span = document.createElement('span');
+        span.textContent = v;
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        optionsWrap.appendChild(label);
+      });
+    }
+
+    updateMultiSelectButton(selectId);
   });
 }
 
@@ -1037,14 +1195,14 @@ function getFilteredRows() {
   const search = document.getElementById('f-search').value.trim().toLowerCase();
   const activeFilters = {};
   Object.keys(FILTER_COLUMNS).forEach(function (selectId) {
-    const val = document.getElementById(selectId).value;
-    if (val) activeFilters[FILTER_COLUMNS[selectId]] = val;
+    const sel = filterSelections[selectId];
+    if (sel && sel.size > 0) activeFilters[FILTER_COLUMNS[selectId]] = sel;
   });
 
   return allRows.filter(function (row) {
     for (const colName in activeFilters) {
       const idx = allHeaders.indexOf(colName);
-      if (idx !== -1 && String(row[idx]) !== activeFilters[colName]) return false;
+      if (idx !== -1 && !activeFilters[colName].has(String(row[idx]))) return false;
     }
     if (search) {
       const hay = row.join(' ').toLowerCase();
@@ -1145,14 +1303,61 @@ function renderDoughnut(canvasId, title, labels, data, colors) {
 ['f-search'].forEach(function (id) {
   document.getElementById(id).addEventListener('input', renderTable);
 });
-Object.keys(FILTER_COLUMNS).forEach(function (id) {
-  document.getElementById(id).addEventListener('change', renderTable);
+
+// Monta o esqueleto de cada filtro de múltipla seleção uma única vez
+// (as opções em si são preenchidas depois, em populateFilterOptions()).
+Object.keys(FILTER_COLUMNS).forEach(createMultiSelect);
+
+Object.keys(FILTER_COLUMNS).forEach(function (selectId) {
+  const container = document.getElementById(selectId);
+
+  container.addEventListener('click', function (e) {
+    if (e.target.classList.contains('msel-btn')) {
+      const wasOpen = container.classList.contains('msel-open');
+      document.querySelectorAll('.msel.msel-open').forEach(function (el) {
+        el.classList.remove('msel-open');
+      });
+      if (!wasOpen) container.classList.add('msel-open');
+      e.stopPropagation();
+    } else if (e.target.classList.contains('msel-select-all')) {
+      const boxes = container.querySelectorAll('.msel-options input[type="checkbox"]');
+      boxes.forEach(function (cb) { cb.checked = true; filterSelections[selectId].add(cb.value); });
+      updateMultiSelectButton(selectId);
+      renderTable();
+    } else if (e.target.classList.contains('msel-clear')) {
+      const boxes = container.querySelectorAll('.msel-options input[type="checkbox"]');
+      boxes.forEach(function (cb) { cb.checked = false; });
+      filterSelections[selectId].clear();
+      updateMultiSelectButton(selectId);
+      renderTable();
+    }
+  });
+
+  container.addEventListener('change', function (e) {
+    if (e.target.type !== 'checkbox') return;
+    if (e.target.checked) filterSelections[selectId].add(e.target.value);
+    else filterSelections[selectId].delete(e.target.value);
+    updateMultiSelectButton(selectId);
+    renderTable();
+  });
+});
+
+// Fecha qualquer painel aberto ao clicar fora dele.
+document.addEventListener('click', function (e) {
+  document.querySelectorAll('.msel.msel-open').forEach(function (el) {
+    if (!el.contains(e.target)) el.classList.remove('msel-open');
+  });
 });
 
 document.getElementById('clear-filters-btn').addEventListener('click', function () {
   document.getElementById('f-search').value = '';
   Object.keys(FILTER_COLUMNS).forEach(function (id) {
-    document.getElementById(id).value = '';
+    filterSelections[id].clear();
+    const container = document.getElementById(id);
+    container.querySelectorAll('.msel-options input[type="checkbox"]').forEach(function (cb) {
+      cb.checked = false;
+    });
+    updateMultiSelectButton(id);
   });
   renderTable();
 });
