@@ -802,6 +802,20 @@ function toDisplayRow(row) {
   return base.concat(extras);
 }
 
+// Colunas do RELATÓRIO baixado (botão "Baixar Relação de Lojas Atualizada"):
+// mesmas colunas da tabela do Dash + GP_NOME. GP_NOME fica só no relatório
+// baixado, nunca na tabela em tela (REAL_DISPLAY_HEADERS/DISPLAY_HEADERS
+// continuam sem ela) — pedido do usuário em 15/09/2026.
+const REPORT_DISPLAY_HEADERS = ['REV_CNPJ', 'GP_NOME', 'GN_NOME', 'REV_NOME', 'Estoque', 'Login', 'Senha'];
+const REPORT_DISPLAY_INDEXES = REPORT_DISPLAY_HEADERS.map(h => EXPOSED_HEADERS.indexOf(h));
+const REPORT_HEADERS = REPORT_DISPLAY_HEADERS.concat(EXTRA_COLUMNS.map(c => c.header));
+
+function toReportRow(row) {
+  const base = REPORT_DISPLAY_INDEXES.map(idx => row[idx]);
+  const extras = EXTRA_COLUMNS.map(c => c.compute(row));
+  return base.concat(extras);
+}
+
 // Colunas de texto "livre" cuja grafia varia na planilha (TUDO MAIÚSCULO,
 // tudo minúsculo, misturado etc.) e que aparecem no Dash (tabela e/ou
 // dropdowns de filtro). Padronizadas em Primeira Maiúscula só para exibição
@@ -841,10 +855,12 @@ function isEstoqueCritico(row) {
 
 /* ==================== ESTADO ==================== */
 let userEmail = null;
-// 3 níveis de acesso (coluna Perfil e/ou a coluna de time, em Usuários_permitidos):
-//   'gn'     -> só vê linhas onde seu e-mail aparece em "Email GN" (H)
-//   'master' -> só vê linhas onde seu e-mail aparece em "Email GP" (I) — carteira do GP, não é "vê tudo"
-//   'ultra'  -> vê TODAS as linhas, sem restrição de carteira, e ganha a aba "Logs de Acesso"
+// Níveis de acesso (coluna Perfil e/ou a coluna de time, em Usuários_permitidos):
+//   'gn'            -> só vê linhas onde seu e-mail aparece em "Email GN" (H)
+//   'master'        -> só vê linhas onde seu e-mail aparece em "Email GP" (I) — carteira do GP, não é "vê tudo"
+//   'ultra'         -> vê TODAS as linhas, sem restrição de carteira, e ganha a aba "Logs de Acesso"
+//   'ultra_externo' -> (adicionado em 15/09/2026) vê TODAS as linhas igual ao 'ultra',
+//                      mas NUNCA ganha a aba "Logs de Acesso" — mesmo acesso a lojas, sem o interno
 let userRole = 'gn';
 let allHeaders = EXPOSED_HEADERS;
 let allRowsFull = [];  // todas as linhas (antes da restrição por carteira)
@@ -942,13 +958,18 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 // Classifica o nível de acesso a partir das colunas de Usuários_permitidos
-// (tudo menos o e-mail): 'ultra' > 'master' > 'gn'. Aceita tanto os nomes
-// que o usuário usa ("master", "ultra") quanto as siglas que já existem na
-// planilha ("GP", "UBR", "GN"), porque as duas convenções apareceram
-// misturadas em colunas diferentes ao longo do tempo.
+// (tudo menos o e-mail): 'ultra_externo' > 'ultra' > 'master' > 'gn'. Aceita
+// tanto os nomes que o usuário usa ("master", "ultra") quanto as siglas que
+// já existem na planilha ("GP", "UBR", "GN"), porque as duas convenções
+// apareceram misturadas em colunas diferentes ao longo do tempo.
+// 'ultra_externo' (15/09/2026): mesmo acesso do 'ultra' (vê tudo), mas sem a
+// aba de Logs — marcar a linha na planilha com "ultra externo", "ultra-externo"
+// ou "ultraexterno" em qualquer uma das colunas de nível. Checado ANTES de
+// 'ultra' puro pra não cair na regra mais ampla por engano.
 function classifyPerfil(cells) {
   const values = (cells || []).map(function (v) { return (v || '').trim().toLowerCase(); });
   const has = function (tags) { return values.some(function (v) { return tags.indexOf(v) !== -1; }); };
+  if (has(['ultra externo', 'ultra-externo', 'ultraexterno'])) return 'ultra_externo';
   if (has(['ultra', 'ubr'])) return 'ultra';
   if (has(['master', 'gp'])) return 'master';
   if (has(['gn'])) return 'gn';
@@ -1019,7 +1040,7 @@ function enterDashboard() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('user-box').style.display = 'flex';
-  const roleLabel = userRole === 'ultra' ? ' (ultra)' : (userRole === 'master' ? ' (master)' : '');
+  const roleLabel = userRole === 'ultra' ? ' (ultra)' : (userRole === 'ultra_externo' ? ' (ultra externo)' : (userRole === 'master' ? ' (master)' : ''));
   document.getElementById('user-email').textContent = userEmail + roleLabel;
   if (userRole === 'ultra') {
     document.getElementById('view-tabs').style.display = 'flex';
@@ -1076,8 +1097,9 @@ async function loadData() {
     // de maiúscula/minúscula diferentes na planilha).
     allRowsFull = applyTitleCaseColumns(allRowsFull);
 
-    if (userRole === 'ultra') {
-      // Ultra vê a carteira de todos, sem restrição.
+    if (userRole === 'ultra' || userRole === 'ultra_externo') {
+      // Ultra e Ultra Externo veem a carteira de todos, sem restrição
+      // (a diferença entre os dois é só a aba de Logs, controlada em enterDashboard()).
       allRows = allRowsFull;
     } else if (userRole === 'master') {
       // Master vê a própria carteira: linhas onde seu e-mail aparece em "Email GP".
@@ -1250,7 +1272,7 @@ function renderTable() {
     tbody.appendChild(tr);
   });
 
-  const scopeNote = userRole === 'ultra' ? '' : ' (sua carteira)';
+  const scopeNote = (userRole === 'ultra' || userRole === 'ultra_externo') ? '' : ' (sua carteira)';
   document.getElementById('results-count').textContent =
     rows.length + ' de ' + allRows.length + ' lojas exibidas' + scopeNote;
 
@@ -1377,14 +1399,14 @@ function showStatus(msg, type) {
 
 /* ==================== BAIXAR RELATÓRIO (Excel) ==================== */
 document.getElementById('download-btn').addEventListener('click', function () {
-  const rows = getFilteredRows().map(toDisplayRow);
+  const rows = getFilteredRows().map(toReportRow);
 
   if (typeof XLSX !== 'undefined') {
-    downloadExcel(DISPLAY_HEADERS, rows, 'relatorio_lojas.xlsx');
+    downloadExcel(REPORT_HEADERS, rows, 'relatorio_lojas.xlsx');
     showStatus('Excel baixado com ' + rows.length + ' linha(s).', 'success');
   } else {
     // Fallback (só se a biblioteca de Excel não carregar por algum motivo)
-    downloadCsv(DISPLAY_HEADERS, rows, 'relatorio_lojas.csv');
+    downloadCsv(REPORT_HEADERS, rows, 'relatorio_lojas.csv');
     showStatus('Não consegui gerar o Excel agora — baixei em CSV. Tente atualizar a página.', 'error');
   }
   logToBackend('download');
