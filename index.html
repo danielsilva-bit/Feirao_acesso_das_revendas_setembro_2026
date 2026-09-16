@@ -168,6 +168,16 @@
   #dashboard { display: none; }
   #filters-bar { display: none; }
   #ranking-view { display: none; }
+  #evolucao-view { display: none; }
+  .evolucao-nota {
+    font-size: 13px;
+    color: var(--muted, #5B6472);
+    background: var(--steel-bg);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 0 0 14px;
+    line-height: 1.5;
+  }
   /* Ranking > Ranking por GP — linha de cabeçalho de cada grupo de GP,
      adicionado em 16/09/2026 (pedido "tabela dinâmica" por GP) */
   .ranking-gp-header-row td {
@@ -588,6 +598,7 @@
     <button class="view-tab active" id="tab-lojas" type="button">Lojas</button>
     <button class="view-tab" id="tab-logs" type="button">Logs de Acesso</button>
     <button class="view-tab" id="tab-ranking" type="button">Ranking GN Sem Estoque</button>
+    <button class="view-tab" id="tab-evolucao" type="button">Evolução do Estoque</button>
   </nav>
   <div id="user-box" style="display:none;">
     <span>Logado como <b id="user-email"></b></span>
@@ -768,6 +779,45 @@
     </div>
   </div>
 
+  <div id="evolucao-view">
+    <div id="evolucao-status-msg"></div>
+
+    <div class="charts-heading">Evolução do Estoque (total de lojas, não segue os filtros de GP/GN)</div>
+    <p class="evolucao-nota">
+      Antes de 08/09/2026 não temos acompanhamento dia a dia, então esse período inteiro entra como um
+      único ponto de partida ("07/09 e antes"). De 08 a 10/09/2026 usamos os números que você
+      acompanhou manualmente. A partir de 11/09/2026, o dia em que cada loja "subiu estoque" é
+      calculado automaticamente pela coluna <b>Última Atualização</b>: uma loja Com Estoque hoje, cuja
+      última atualização foi num certo dia, é contada como tendo subido estoque naquele dia. Se a aba
+      <b>Historico_Estoque</b> já existir na planilha (gerada pelo gatilho diário do Apps Script), os
+      dias que ela cobre usam o número real gravado naquele dia em vez da estimativa.
+    </p>
+    <div class="charts-grid">
+      <div class="chart-box chart-box-wide"><canvas id="chart-evolucao-linha"></canvas></div>
+    </div>
+
+    <div class="charts-heading">Com Estoque x Sem Estoque por dia</div>
+    <div class="charts-grid">
+      <div class="chart-box chart-box-wide"><canvas id="chart-evolucao-diario"></canvas></div>
+    </div>
+
+    <div class="charts-heading">Detalhe por dia</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Dia</th>
+            <th>Com Estoque</th>
+            <th>Sem Estoque</th>
+            <th>Subiram estoque no dia</th>
+            <th>Origem</th>
+          </tr>
+        </thead>
+        <tbody id="evolucao-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
 </main>
 
 <footer>Usadosbr &middot; Dashboard interno &middot; acesso e ações são registrados</footer>
@@ -783,6 +833,15 @@ const SHEET_ID = '1MiIT8ctq8HLP63oG34ERkyBPyhEiu-OrUCjpv7iAse0';
 const DATA_TAB = 'Base_lojas';
 const AUTH_TAB = 'Usuários_permitidos';
 const LOGS_TAB = 'Logs';
+// Aba opcional gerada pelo gatilho diário do Apps Script (ver instruções enviadas
+// em 16/09/2026). Enquanto ela não existir na planilha, a aba "Evolução do
+// Estoque" calcula tudo a partir da coluna Última Atualização; quando ela passar
+// a existir, os dias que ela cobre usam o número REAL gravado naquele dia.
+// Atenção: pedir uma aba que não existe no gviz NÃO dá erro — ele devolve os
+// dados da primeira aba da planilha (Base_lojas) por engano. Por isso sempre
+// conferimos se os cabeçalhos batem antes de confiar no resultado.
+const HISTORICO_TAB = 'Historico_Estoque';
+const HISTORICO_EXPECTED_HEADERS = ['Data', 'Total Lojas', 'Com Estoque', 'Sem Estoque'];
 const LOG_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzfCZ0o2euEGjE9PbKdHIYMAKdYYWm8IluHGYnkDrrWztMGSs8-XkhvL0_1ytoZNQJpAg/exec';
 
 // Colunas exibidas, na ordem pedida: A,B,C,D,E,G,H,J,K,L,M,N,O,P(Comercial)
@@ -1126,23 +1185,29 @@ document.getElementById('logout-btn') && document.getElementById('logout-btn').a
 document.getElementById('tab-lojas').addEventListener('click', function () { showView('lojas'); });
 document.getElementById('tab-logs').addEventListener('click', function () { showView('logs'); });
 document.getElementById('tab-ranking').addEventListener('click', function () { showView('ranking'); });
+document.getElementById('tab-evolucao').addEventListener('click', function () { showView('evolucao'); });
 
 function showView(view) {
   const isLojas = view === 'lojas';
   const isLogs = view === 'logs';
   const isRanking = view === 'ranking';
+  const isEvolucao = view === 'evolucao';
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
   document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
   document.getElementById('ranking-view').style.display = isRanking ? 'block' : 'none';
+  document.getElementById('evolucao-view').style.display = isEvolucao ? 'block' : 'none';
   // #filters-bar (busca + GP/GN/Faixa Estoque/Faixa de Atualização/Comercial + Atualizar/Limpar
   // filtros) é compartilhado entre Lojas e Ranking (16/09/2026, pedido do usuário) — só some na
-  // aba de Logs, que tem seu próprio filtro de período independente.
+  // aba de Logs e na de Evolução do Estoque, que não seguem filtro de carteira (é uma visão
+  // agregada de todas as lojas, pedido do usuário em 16/09/2026).
   document.getElementById('filters-bar').style.display = (isLojas || isRanking) ? 'flex' : 'none';
   document.getElementById('tab-lojas').classList.toggle('active', isLojas);
   document.getElementById('tab-logs').classList.toggle('active', isLogs);
   document.getElementById('tab-ranking').classList.toggle('active', isRanking);
+  document.getElementById('tab-evolucao').classList.toggle('active', isEvolucao);
   if (isLogs && !logsLoaded) loadLogs();
   if (isRanking) renderGnRanking();
+  if (isEvolucao) renderEvolucaoEstoque();
 }
 
 /* ==================== RANKING GN SEM ESTOQUE (só ultra) ====================
@@ -1320,8 +1385,297 @@ document.getElementById('ranking-download-btn').addEventListener('click', functi
     ], 'ranking_gn_sem_estoque.csv');
     showStatus('Não consegui gerar o Excel agora — baixei em CSV (as duas seções separadas por título). Tente atualizar a página.', 'error');
   }
-  logToBackend('download');
+  logToBackend('download', 'Ranking | ' + describeActiveFilters());
 });
+
+/* ==================== EVOLUÇÃO DO ESTOQUE (só ultra) ====================
+   Pedido do usuário em 16/09/2026: acompanhar quantas lojas "subiram estoque"
+   a partir de 09/2026. Ele mesmo só acompanhou 3 dias na mão (08, 09 e
+   10/09/2026 — contagem de lojas SEM estoque, em queda: 544, 530, 505) e
+   pediu explicitamente (mensagem de 16/09/2026) que os dias seguintes
+   sejam calculados automaticamente pela coluna "Última Atualização":
+   "use a coluna de última atualização para definir como dia que a loja
+   subiu estoque, exemplo, última atualização ontem vai significar que ela
+   subiu estoque ontem". Antes de 08/09/2026 não há como saber dia a dia,
+   então vira um único ponto de partida ("07/09 e antes").
+   Não segue os filtros de GP/GN/Faixa/Comercial — é uma visão agregada de
+   toda a base (mesmo universo do doughnut da aba Lojas: `allRows`, já sem
+   restrição de carteira pra ultra e já sem linhas sem Login/Senha). */
+
+// 07/09/2026: último dia SEM acompanhamento manual nem cálculo automático —
+// tudo antes dele (inclusive) vira o ponto de partida único do gráfico.
+const EVOLUCAO_BASELINE_DATE = new Date(2026, 8, 7);
+// Contagem de lojas SEM estoque, acompanhada manualmente pelo usuário.
+const EVOLUCAO_MANUAL_SEM_ESTOQUE = [
+  { date: new Date(2026, 8, 8), semEstoque: 544 },
+  { date: new Date(2026, 8, 9), semEstoque: 530 },
+  { date: new Date(2026, 8, 10), semEstoque: 505 }
+];
+
+function parseBrDate(str) {
+  if (!str) return null;
+  const datePart = String(str).trim().split(' ')[0];
+  const parts = datePart.split('/');
+  if (parts.length !== 3) return null;
+  const d = parseInt(parts[0], 10), m = parseInt(parts[1], 10), y = parseInt(parts[2], 10);
+  if (isNaN(d) || isNaN(m) || isNaN(y)) return null;
+  const dt = new Date(y, m - 1, d);
+  dt.setHours(0, 0, 0, 0);
+  return isNaN(dt.getTime()) ? null : dt;
+}
+function pad2(n) { return String(n).padStart(2, '0'); }
+function dateKey(dt) { return dt.getFullYear() + '-' + pad2(dt.getMonth() + 1) + '-' + pad2(dt.getDate()); }
+function formatDateBrShort(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1); }
+function formatDateBrFull(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear(); }
+function addDays(dt, n) { const c = new Date(dt.getTime()); c.setDate(c.getDate() + n); return c; }
+
+// Monta a série de dias (baseline + manuais + calculados) a partir da coluna
+// Última Atualização, seguindo exatamente a regra que o usuário pediu.
+function computeEvolucaoEstoque(rows) {
+  const uaIdx = EXPOSED_HEADERS.indexOf('Ultima Atualização');
+  let totalLojas = 0, comEstoqueTotal = 0;
+  const recoveredByKey = {};
+
+  rows.forEach(function (row) {
+    const status = isEstoqueCritico(row);
+    if (status === null) return; // valor de Estoque não reconhecido: fora da contagem, igual ao doughnut
+    totalLojas++;
+    if (status === false) {
+      comEstoqueTotal++;
+      const dt = parseBrDate(row[uaIdx]);
+      if (dt && dt.getTime() > EVOLUCAO_BASELINE_DATE.getTime()) {
+        const key = dateKey(dt);
+        recoveredByKey[key] = (recoveredByKey[key] || 0) + 1;
+      }
+    }
+  });
+
+  const recoveredKeys = Object.keys(recoveredByKey);
+  const sumRecovered = recoveredKeys.reduce(function (a, k) { return a + recoveredByKey[k]; }, 0);
+  const baselineComEstoque = Math.max(0, comEstoqueTotal - sumRecovered);
+
+  // Última data do gráfico: hoje, ou a maior data de recuperação encontrada nos
+  // dados (o que for mais tarde) — assim uma "Última Atualização" no futuro
+  // (planilha adiantada) não fica de fora do gráfico.
+  let maxDate = new Date(); maxDate.setHours(0, 0, 0, 0);
+  recoveredKeys.forEach(function (key) {
+    const p = key.split('-');
+    const d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    if (d.getTime() > maxDate.getTime()) maxDate = d;
+  });
+
+  const days = [];
+  let cursor = new Date(EVOLUCAO_BASELINE_DATE.getTime());
+  let semEstoqueAnterior = totalLojas - baselineComEstoque;
+  days.push({
+    date: new Date(cursor.getTime()),
+    label: formatDateBrShort(cursor) + ' e antes',
+    comEstoque: baselineComEstoque,
+    semEstoque: semEstoqueAnterior,
+    subiu: null,
+    origem: 'Base (sem acompanhamento diário)'
+  });
+
+  while (cursor.getTime() < maxDate.getTime()) {
+    cursor = addDays(cursor, 1);
+    const key = dateKey(cursor);
+    const manual = EVOLUCAO_MANUAL_SEM_ESTOQUE.find(function (m) { return dateKey(m.date) === key; });
+    let semEstoque, origem;
+    if (manual) {
+      semEstoque = manual.semEstoque;
+      origem = 'Acompanhado manualmente';
+    } else {
+      const subiu = recoveredByKey[key] || 0;
+      semEstoque = Math.max(0, semEstoqueAnterior - subiu);
+      origem = 'Calculado (Última Atualização)';
+    }
+    days.push({
+      date: new Date(cursor.getTime()),
+      label: formatDateBrShort(cursor),
+      comEstoque: totalLojas - semEstoque,
+      semEstoque: semEstoque,
+      subiu: Math.max(0, semEstoqueAnterior - semEstoque),
+      origem: origem
+    });
+    semEstoqueAnterior = semEstoque;
+  }
+
+  return { totalLojas: totalLojas, days: days };
+}
+
+// Busca a aba opcional "Historico_Estoque" (gerada pelo gatilho do Apps
+// Script). Se ela ainda não existir, o gviz devolve a primeira aba da
+// planilha (Base_lojas) em vez de dar erro — por isso confirmamos os
+// cabeçalhos antes de usar qualquer coisa do resultado.
+async function loadHistoricoEstoqueOverlay() {
+  try {
+    const res = await fetch(gvizUrl(HISTORICO_TAB), { cache: 'no-store' });
+    if (!res.ok) return null;
+    const csvText = await res.text();
+    const objects = parseCSVToObjects(csvText);
+    if (!objects.length) return null;
+    const keys = Object.keys(objects[0]);
+    const hasAllHeaders = HISTORICO_EXPECTED_HEADERS.every(function (h) { return keys.indexOf(h) !== -1; });
+    if (!hasAllHeaders) return null;
+    const map = {};
+    objects.forEach(function (obj) {
+      const dt = parseBrDate(obj['Data']);
+      if (!dt) return;
+      map[dateKey(dt)] = {
+        comEstoque: parseInt(obj['Com Estoque'], 10) || 0,
+        semEstoque: parseInt(obj['Sem Estoque'], 10) || 0
+      };
+    });
+    return Object.keys(map).length ? map : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Para os dias em que a aba Historico_Estoque tem uma "foto" real, usa esse
+// número real em vez da estimativa — inclusive estendendo a série com dias
+// que só existem no histórico (ex.: depois que o gatilho já rodou por mais
+// dias do que este cálculo cobriu).
+function applyHistoricoOverlay(evolucao, overlayMap) {
+  if (!overlayMap) return evolucao;
+  const days = evolucao.days.slice();
+  const existingKeys = {};
+  days.forEach(function (d) { existingKeys[dateKey(d.date)] = true; });
+  Object.keys(overlayMap).forEach(function (key) {
+    if (existingKeys[key]) return;
+    const p = key.split('-');
+    const dt = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
+    days.push({ date: dt, label: formatDateBrShort(dt), comEstoque: 0, semEstoque: 0, subiu: null, origem: '' });
+  });
+  days.sort(function (a, b) { return a.date.getTime() - b.date.getTime(); });
+
+  let prevSemEstoque = null;
+  days.forEach(function (d) {
+    const ov = overlayMap[dateKey(d.date)];
+    if (ov) {
+      d.comEstoque = ov.comEstoque;
+      d.semEstoque = ov.semEstoque;
+      d.origem = 'Historico_Estoque (gatilho diário)';
+    }
+    d.subiu = prevSemEstoque === null ? null : Math.max(0, prevSemEstoque - d.semEstoque);
+    prevSemEstoque = d.semEstoque;
+  });
+
+  return { totalLojas: evolucao.totalLojas, days: days };
+}
+
+async function renderEvolucaoEstoque() {
+  const evolucaoBase = computeEvolucaoEstoque(allRows);
+  const overlay = await loadHistoricoEstoqueOverlay();
+  const evolucao = applyHistoricoOverlay(evolucaoBase, overlay);
+
+  renderEvolucaoLinha(evolucao);
+  renderEvolucaoDiario(evolucao);
+  renderEvolucaoTable(evolucao);
+}
+
+function renderEvolucaoLinha(evolucao) {
+  const canvas = document.getElementById('chart-evolucao-linha');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const labels = evolucao.days.map(function (d) { return d.label; });
+  const semEstoqueData = evolucao.days.map(function (d) { return d.semEstoque; });
+
+  if (charts['chart-evolucao-linha']) charts['chart-evolucao-linha'].destroy();
+  charts['chart-evolucao-linha'] = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Lojas Sem Estoque',
+        data: semEstoqueData,
+        borderColor: '#B23A48',
+        backgroundColor: '#B23A48',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#B23A48',
+        tension: 0.2,
+        fill: false,
+        datalabels: {
+          anchor: 'end', align: 'top', offset: 4,
+          color: '#14151A',
+          font: { family: 'Inter', size: 11, weight: '600' }
+        }
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 16 } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
+      },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Evolução de lojas Sem Estoque (queda = lojas subindo estoque)', font: { family: 'Space Grotesk', size: 13 } }
+      }
+    },
+    plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
+  });
+}
+
+function renderEvolucaoDiario(evolucao) {
+  const canvas = document.getElementById('chart-evolucao-diario');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const labels = evolucao.days.map(function (d) { return d.label; });
+  const comData = evolucao.days.map(function (d) { return d.comEstoque; });
+  const semData = evolucao.days.map(function (d) { return d.semEstoque; });
+
+  if (charts['chart-evolucao-diario']) charts['chart-evolucao-diario'].destroy();
+  charts['chart-evolucao-diario'] = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Com Estoque', data: comData, backgroundColor: '#2E8B57', borderRadius: 4, maxBarThickness: 28,
+          datalabels: { anchor: 'end', align: 'top', offset: 2, color: '#14151A', font: { family: 'Inter', size: 10, weight: '600' } }
+        },
+        {
+          label: 'Sem Estoque', data: semData, backgroundColor: '#B23A48', borderRadius: 4, maxBarThickness: 28,
+          datalabels: { anchor: 'end', align: 'top', offset: 2, color: '#14151A', font: { family: 'Inter', size: 10, weight: '600' } }
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 16 } },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
+        title: { display: true, text: 'Com Estoque x Sem Estoque por dia', font: { family: 'Space Grotesk', size: 13 } }
+      }
+    },
+    plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
+  });
+}
+
+function renderEvolucaoTable(evolucao) {
+  const tbody = document.getElementById('evolucao-table-body');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  const colLabels = ['Dia', 'Com Estoque', 'Sem Estoque', 'Subiram estoque no dia', 'Origem'];
+  evolucao.days.slice().reverse().forEach(function (d) {
+    const tr = document.createElement('tr');
+    const diaLabel = d.label.indexOf('e antes') !== -1 ? d.label : formatDateBrFull(d.date);
+    [diaLabel, d.comEstoque, d.semEstoque, d.subiu === null ? '—' : d.subiu, d.origem].forEach(function (val, idx) {
+      const td = document.createElement('td');
+      td.setAttribute('data-label', colLabels[idx]);
+      td.textContent = val;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+}
 
 /* ==================== BACKEND (log + e-mail) ==================== */
 function callBackend(action, extra) {
@@ -1332,9 +1686,12 @@ function callBackend(action, extra) {
     body: JSON.stringify(payload)
   }).then(r => r.json());
 }
-function logToBackend(action) {
+// `detalhe` (opcional, adicionado em 16/09/2026) vira uma 4ª coluna na aba
+// Logs (ver Code.gs/logAction_) — ex.: quais filtros estavam ativos num
+// download, ou qual loja teve a senha resetada.
+function logToBackend(action, detalhe) {
   if (!LOG_WEBAPP_URL || LOG_WEBAPP_URL.indexOf('COLOQUE_AQUI') === 0) return;
-  callBackend(action).catch(() => {});
+  callBackend(action, detalhe !== undefined ? { detalhe: detalhe } : undefined).catch(() => {});
 }
 
 /* ==================== DADOS ==================== */
@@ -1491,6 +1848,24 @@ function getFilteredRows() {
   });
 }
 
+// Descreve em texto os filtros/busca ativos no momento (busca + GP/GN/Faixa
+// Estoque/Faixa de Atualização/Comercial) — usado como "detalhe" gravado na
+// aba Logs pelos botões de download e envio por e-mail (adicionado em
+// 16/09/2026, pedido do usuário de "detalhe completo" nos Logs de Acesso:
+// filtro+valor). Reaproveita o mesmo filterSelections/f-search de
+// getFilteredRows(), então nunca fica dessincronizado do que foi realmente
+// exportado/enviado.
+function describeActiveFilters() {
+  const parts = [];
+  const search = document.getElementById('f-search').value.trim();
+  if (search) parts.push('Busca: "' + search + '"');
+  Object.keys(FILTER_COLUMNS).forEach(function (selectId) {
+    const sel = filterSelections[selectId];
+    if (sel && sel.size > 0) parts.push(FILTER_COLUMNS[selectId] + ': ' + Array.from(sel).join(', '));
+  });
+  return parts.length ? parts.join(' | ') : 'Sem filtro';
+}
+
 function renderTable() {
   const rows = getFilteredRows();
   const tbody = document.getElementById('table-body');
@@ -1515,6 +1890,16 @@ function renderTable() {
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.textContent = RESET_SENHA_TEXT;
+        // Loga qual loja teve a senha resetada (pedido do usuário, "detalhe
+        // completo" nos Logs — 16/09/2026). Não bloqueia a navegação: o link
+        // já abre em nova aba (target="_blank"), então só dispara o log em
+        // paralelo ao clique normal.
+        link.addEventListener('click', function () {
+          const revCnpjIdx = EXPOSED_HEADERS.indexOf('REV_CNPJ');
+          const revNomeIdx = EXPOSED_HEADERS.indexOf('REV_NOME');
+          const detalhe = (row[revCnpjIdx] || '') + ' - ' + (row[revNomeIdx] || '');
+          logToBackend('resetar_senha', detalhe);
+        });
         td.appendChild(link);
       } else if (isExtraColumn && (isPositive || isNegative)) {
         const span = document.createElement('span');
@@ -1671,7 +2056,7 @@ document.getElementById('download-btn').addEventListener('click', function () {
     downloadCsv(REPORT_HEADERS, rows, 'relatorio_lojas.csv');
     showStatus('Não consegui gerar o Excel agora — baixei em CSV. Tente atualizar a página.', 'error');
   }
-  logToBackend('download');
+  logToBackend('download', 'Lojas | ' + describeActiveFilters());
 });
 
 function downloadExcel(headers, rows, filename, textColumns) {
@@ -1792,7 +2177,7 @@ document.getElementById('email-btn').addEventListener('click', function () {
   const originalText = btn.innerHTML;
   btn.innerHTML = '<span class="spinner"></span> Enviando...';
 
-  callBackend('send_email', { headers: DISPLAY_HEADERS, rows: rows })
+  callBackend('send_email', { headers: DISPLAY_HEADERS, rows: rows, detalhe: 'Lojas | ' + describeActiveFilters() })
     .then(function (res) {
       if (res.ok) {
         showStatus('Relatório enviado para ' + userEmail + '.', 'success');
