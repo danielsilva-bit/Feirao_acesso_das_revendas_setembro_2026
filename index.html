@@ -168,6 +168,17 @@
   #dashboard { display: none; }
   #filters-bar { display: none; }
   #ranking-view { display: none; }
+  /* Ranking > Ranking por GP — linha de cabeçalho de cada grupo de GP,
+     adicionado em 16/09/2026 (pedido "tabela dinâmica" por GP) */
+  .ranking-gp-header-row td {
+    background: var(--steel-bg);
+    color: var(--steel);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: .03em;
+  }
+  .ranking-gp-header-row:hover td { background: var(--steel-bg); }
 
   .toolbar {
     background: var(--card);
@@ -736,6 +747,25 @@
         <tbody id="ranking-table-body"></tbody>
       </table>
     </div>
+
+    <div class="charts-heading">Ranking por GP (GNs agrupados dentro de cada GP) — segue os mesmos filtros; filtrar por um GP mostra só o grupo dele</div>
+
+    <div id="ranking-gp-results-count"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>GN</th>
+            <th>Lojas sem Estoque</th>
+            <th>Total de Lojas</th>
+            <th>% sem Estoque (do próprio GN)</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-gp-table-body"></tbody>
+      </table>
+    </div>
   </div>
 
 </main>
@@ -1176,21 +1206,119 @@ function renderGnRanking() {
   });
   document.getElementById('ranking-results-count').textContent =
     list.length + ' GN(s) exibido(s), ordenados do maior para o menor número de lojas sem estoque.';
+  renderGnRankingByGp();
+}
+
+/* Ranking por GP — pedido do usuário em 16/09/2026: "tabela dinâmica" que
+   agrupa os GNs dentro do GP a que pertencem. Reaproveita a MESMA lista já
+   filtrada (getFilteredRows()) do ranking geral acima — por isso, se o
+   usuário filtrar por um GP específico na barra de filtros compartilhada,
+   essa tabela mostra automaticamente só o grupo daquele GP (sem lógica
+   extra: os dados já vêm restritos antes de agrupar). */
+function computeGnSemEstoqueRankingByGp(rows) {
+  const gpIdx = EXPOSED_HEADERS.indexOf('GP_NOME');
+  const gnIdx = EXPOSED_HEADERS.indexOf('GN_NOME');
+  const byGp = {};
+  rows.forEach(function (row) {
+    const gp = (row[gpIdx] || '').toString().trim();
+    const gn = (row[gnIdx] || '').toString().trim();
+    if (!gp || !gn) return; // sem GP_NOME ou GN_NOME preenchido: fora do detalhamento por GP
+    const critStatus = isEstoqueCritico(row);
+    if (critStatus === null) return; // mesma regra do ranking geral: Estoque não reconhecido fica fora
+    if (!byGp[gp]) byGp[gp] = { gp: gp, semEstoque: 0, total: 0, byGn: {} };
+    const gpEntry = byGp[gp];
+    gpEntry.total++;
+    if (critStatus === true) gpEntry.semEstoque++;
+    if (!gpEntry.byGn[gn]) gpEntry.byGn[gn] = { gn: gn, semEstoque: 0, total: 0 };
+    gpEntry.byGn[gn].total++;
+    if (critStatus === true) gpEntry.byGn[gn].semEstoque++;
+  });
+  const gpList = Object.keys(byGp).map(function (k) {
+    const entry = byGp[k];
+    const gnList = Object.keys(entry.byGn).map(function (gk) {
+      const g = entry.byGn[gk];
+      g.pct = g.total > 0 ? (g.semEstoque / g.total * 100) : 0;
+      return g;
+    });
+    // Dentro do GP, GNs do maior pro menor valor absoluto de lojas sem estoque
+    // (mesmo critério do ranking geral).
+    gnList.sort(function (a, b) { return b.semEstoque - a.semEstoque; });
+    return { gp: entry.gp, semEstoque: entry.semEstoque, total: entry.total, gns: gnList };
+  });
+  // GPs ordenados do maior pro menor total de lojas sem estoque (somando os
+  // GNs dele) — mesmo critério "pior primeiro" do ranking geral.
+  gpList.sort(function (a, b) { return b.semEstoque - a.semEstoque; });
+  return gpList;
+}
+
+function renderGnRankingByGp() {
+  const gpList = computeGnSemEstoqueRankingByGp(getFilteredRows());
+  const tbody = document.getElementById('ranking-gp-table-body');
+  tbody.innerHTML = '';
+  let counter = 0;
+  gpList.forEach(function (gpEntry) {
+    const headerTr = document.createElement('tr');
+    headerTr.className = 'ranking-gp-header-row';
+    const headerTd = document.createElement('td');
+    headerTd.colSpan = 5;
+    headerTd.textContent = 'GP - ' + gpEntry.gp;
+    headerTr.appendChild(headerTd);
+    tbody.appendChild(headerTr);
+
+    gpEntry.gns.forEach(function (item) {
+      counter++;
+      const cells = [counter, item.gn, item.semEstoque, item.total, item.pct.toFixed(1).replace('.', ',') + '%'];
+      const tr = document.createElement('tr');
+      cells.forEach(function (cell, idx) {
+        const td = document.createElement('td');
+        td.textContent = idx >= 2 && idx <= 3 ? Number(cell).toLocaleString('pt-BR') : cell;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  });
+  document.getElementById('ranking-gp-results-count').textContent =
+    gpList.length + ' GP(s) exibido(s), cada um com seus GNs ordenados do maior para o menor número de lojas sem estoque.';
+}
+
+/* Formato "achatado" (com coluna GP) só pro arquivo exportado — na tela o
+   GP aparece como linha de cabeçalho de grupo (ver renderGnRankingByGp),
+   mas numa planilha uma coluna própria é mais útil pra filtrar/dinamizar. */
+const RANKING_GP_HEADERS = ['#', 'GP', 'GN', 'Lojas sem Estoque', 'Total de Lojas', '% sem Estoque (do próprio GN)'];
+function gnRankingByGpToDisplayRows(gpList) {
+  const rows = [];
+  let counter = 0;
+  gpList.forEach(function (gpEntry) {
+    gpEntry.gns.forEach(function (item) {
+      counter++;
+      rows.push([counter, gpEntry.gp, item.gn, item.semEstoque, item.total, item.pct.toFixed(1).replace('.', ',') + '%']);
+    });
+  });
+  return rows;
 }
 
 /* Baixar Ranking (Excel/CSV) — pedido do usuário em 16/09/2026, mesmo padrão do
    #download-btn da aba Lojas (SheetJS com fallback pra CSV), mas exportando a
    lista de GN já filtrada em vez da relação de lojas. */
 document.getElementById('ranking-download-btn').addEventListener('click', function () {
-  const list = computeGnSemEstoqueRanking(getFilteredRows());
+  const filteredRows = getFilteredRows();
+  const list = computeGnSemEstoqueRanking(filteredRows);
   const rows = gnRankingToDisplayRows(list);
+  const gpList = computeGnSemEstoqueRankingByGp(filteredRows);
+  const gpRows = gnRankingByGpToDisplayRows(gpList);
 
   if (typeof XLSX !== 'undefined') {
-    downloadExcel(RANKING_HEADERS, rows, 'ranking_gn_sem_estoque.xlsx', [4]);
-    showStatus('Excel do ranking baixado com ' + rows.length + ' GN(s).', 'success');
+    downloadExcelMultiSheet([
+      { name: 'Ranking GN', headers: RANKING_HEADERS, rows: rows, textColumns: [4] },
+      { name: 'Ranking por GP', headers: RANKING_GP_HEADERS, rows: gpRows, textColumns: [5] }
+    ], 'ranking_gn_sem_estoque.xlsx');
+    showStatus('Excel baixado com o ranking geral (' + rows.length + ' GN) e o detalhamento por GP.', 'success');
   } else {
-    downloadCsv(RANKING_HEADERS, rows, 'ranking_gn_sem_estoque.csv');
-    showStatus('Não consegui gerar o Excel agora — baixei em CSV. Tente atualizar a página.', 'error');
+    downloadCsvMultiSection([
+      { title: 'Ranking GN', headers: RANKING_HEADERS, rows: rows },
+      { title: 'Ranking por GP', headers: RANKING_GP_HEADERS, rows: gpRows }
+    ], 'ranking_gn_sem_estoque.csv');
+    showStatus('Não consegui gerar o Excel agora — baixei em CSV (as duas seções separadas por título). Tente atualizar a página.', 'error');
   }
   logToBackend('download');
 });
@@ -1576,6 +1704,38 @@ function downloadExcel(headers, rows, filename, textColumns) {
   XLSX.writeFile(wb, filename);
 }
 
+/* Exporta várias "abas" num único .xlsx — usado pelo Ranking (aba 16/09/2026)
+   pra levar tanto o ranking geral de GN quanto o detalhamento por GP no
+   mesmo arquivo. `downloadExcel()` (uma aba só) continua intocado, usado
+   pelo #download-btn da aba Lojas. */
+function downloadExcelMultiSheet(sheets, filename) {
+  const wb = XLSX.utils.book_new();
+  sheets.forEach(function (sheet) {
+    const aoa = [sheet.headers].concat(sheet.rows.map(function (r) {
+      return r.map(function (cell) { return cell === null || cell === undefined ? '' : cell; });
+    }));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    if (sheet.textColumns && sheet.textColumns.length) {
+      aoa.forEach(function (row, r) {
+        if (r === 0) return;
+        sheet.textColumns.forEach(function (c) {
+          const addr = XLSX.utils.encode_cell({ r: r, c: c });
+          const original = row[c] === undefined ? '' : String(row[c]);
+          ws[addr] = { t: 's', v: original };
+        });
+      });
+    }
+    ws['!cols'] = sheet.headers.map(function (h, i) {
+      let maxLen = String(h).length;
+      aoa.forEach(function (row) { maxLen = Math.max(maxLen, String(row[i] === undefined ? '' : row[i]).length); });
+      return { wch: Math.min(Math.max(maxLen + 2, 10), 40) };
+    });
+    // Nome da aba no Excel tem limite de 31 caracteres.
+    XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
+  });
+  XLSX.writeFile(wb, filename);
+}
+
 function downloadCsv(headers, rows, filename) {
   const csv = toCsv(headers, rows);
   const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -1598,6 +1758,24 @@ function toCsv(headers, rows) {
   const lines = [headers.map(escape).join(',')];
   rows.forEach(function (r) { lines.push(r.map(escape).join(',')); });
   return lines.join('\r\n');
+}
+
+/* Fallback CSV do downloadExcelMultiSheet (CSV não tem "abas" — cada seção
+   sai com um título e uma linha em branco separando da próxima). */
+function downloadCsvMultiSection(sections, filename) {
+  const blocks = sections.map(function (section) {
+    return '# ' + section.title + '\r\n' + toCsv(section.headers, section.rows);
+  });
+  const csv = blocks.join('\r\n\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ==================== ENVIAR POR E-MAIL ==================== */
