@@ -1434,6 +1434,50 @@ function formatDateBrShort(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMo
 function formatDateBrFull(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear(); }
 function addDays(dt, n) { const c = new Date(dt.getTime()); c.setDate(c.getDate() + n); return c; }
 
+// ==================== TRAVA de dia de recuperação por loja (16/09/2026) ====================
+// Pedido do usuário: uma loja que já foi contabilizada como "subiu estoque"
+// num dia X não pode ter esse dia mudado depois só porque a coluna Última
+// Atualização dela é tocada de novo por outro motivo (edição de outro campo,
+// sincronização periódica etc. — ver nota already documentada acima sobre
+// isso acontecer na prática). Sem essa trava, `computeEvolucaoEstoque` lia a
+// Última Atualização AO VIVO de toda loja Com Estoque, toda vez que a
+// página carrega — então se uma loja que recuperou em 14/09 tiver a data
+// bulida de novo em 16/09, o cálculo (que roda do zero a cada carregamento)
+// passava a contar essa loja no balde de 16/09, "roubando" retroativamente
+// a contagem que já tinha sido atribuída a 14/09.
+//
+// Correção: um "livro-razão" por loja (REV_CNPJ → dia em que foi vista pela
+// PRIMEIRA vez com Estoque>=1 e Última Atualização após a baseline),
+// persistido em localStorage (não expira por dia, ao contrário da sessão de
+// login). Uma vez que uma loja entra no livro-razão com um dia, esse dia
+// nunca muda enquanto ela continuar Com Estoque — mesmo que a Última
+// Atualização dela seja tocada de novo depois. Só uma loja que ainda NÃO
+// está no livro-razão (ou que voltou a ficar Sem Estoque, e por isso foi
+// removida dele — ver `pruneRecoveryLedger` abaixo) pode ganhar um dia novo.
+//
+// Limitação conhecida: como é `localStorage`, a trava vale só neste
+// navegador/dispositivo — se o mesmo "ultra" abrir o Dash de um computador
+// diferente, o livro-razão local vai estar vazio lá e recomeça do zero
+// (mas sem retroagir o que já foi exibido no PRIMEIRO navegador, que é o
+// ponto pedido). Se um dia isso precisar valer igual pra qualquer
+// navegador/usuário, dá pra mover esse livro-razão pra uma aba nova na
+// planilha (mesmo padrão do `Historico_Estoque`), alimentada pelo gatilho
+// diário do Apps Script — combinar com o usuário antes de fazer essa
+// mudança maior, já que envolve editar o Code.gs de novo.
+const RECOVERY_LEDGER_KEY = 'estoque_lojas_recovery_ledger_v1';
+
+function loadRecoveryLedger() {
+  try {
+    const raw = localStorage.getItem(RECOVERY_LEDGER_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return (parsed && typeof parsed === 'object') ? parsed : {};
+  } catch (e) { return {}; }
+}
+function saveRecoveryLedger(ledger) {
+  try { localStorage.setItem(RECOVERY_LEDGER_KEY, JSON.stringify(ledger)); } catch (e) {}
+}
+
 // Monta a série de dias (baseline + manuais + hoje real + estimativa no meio)
 // a partir da coluna Última Atualização.
 //
@@ -1458,13 +1502,22 @@ function addDays(dt, n) { const c = new Date(dt.getTime()); c.setDate(c.getDate(
 // dias do meio (quais dias tiveram mais atividade), nunca o total final.
 function computeEvolucaoEstoque(rows) {
   const uaIdx = EXPOSED_HEADERS.indexOf('Ultima Atualização');
+  const cnpjIdx = EXPOSED_HEADERS.indexOf('REV_CNPJ');
   let totalLojas = 0, comEstoqueAgora = 0;
   const recoveredByKey = {};
+
+  // Livro-razão de recuperação por loja (ver bloco "TRAVA de dia de
+  // recuperação" acima) — carregado uma vez por chamada, atualizado in-place
+  // conforme as lojas são varridas, e persistido no final (só se algo mudou).
+  const ledger = loadRecoveryLedger();
+  let ledgerChanged = false;
 
   rows.forEach(function (row) {
     const status = isEstoqueCritico(row);
     if (status === null) return; // valor de Estoque não reconhecido: fora da contagem, igual ao doughnut
     totalLojas++;
+    const cnpj = (row[cnpjIdx] || '').toString().trim();
+
     // REGRA CONFIRMADA COM O USUÁRIO (16/09/2026): só entra no sinal de "subiu
     // estoque no dia X" quem está Com Estoque AGORA (Estoque >= 1). Uma loja
     // com Estoque = 0 NUNCA conta como tendo subido, mesmo que a Última
@@ -1473,13 +1526,34 @@ function computeEvolucaoEstoque(rows) {
     // Última Atualização, quem decide isso.
     if (status === false) {
       comEstoqueAgora++;
-      const dt = parseBrDate(row[uaIdx]);
-      if (dt && dt.getTime() > EVOLUCAO_BASELINE_DATE.getTime()) {
-        const key = dateKey(dt);
-        recoveredByKey[key] = (recoveredByKey[key] || 0) + 1;
+
+      // TRAVA (16/09/2026, pedido do usuário): se essa loja JÁ está no
+      // livro-razão, o dia dela é o que já foi gravado — nunca reler a
+      // Última Atualização ao vivo pra ela (é exatamente isso que impedia a
+      // trava antes: uma loja já recuperada podia "pular" de balde se essa
+      // coluna fosse tocada de novo por qualquer outro motivo). Só uma loja
+      // ainda sem entrada no livro-razão (nunca vista recuperando, ou que
+      // tinha voltado a ficar Sem Estoque e foi removida dele, ver abaixo)
+      // pode ganhar um dia novo, lido da Última Atualização atual.
+      let key = cnpj ? ledger[cnpj] : null;
+      if (!key) {
+        const dt = parseBrDate(row[uaIdx]);
+        if (dt && dt.getTime() > EVOLUCAO_BASELINE_DATE.getTime()) {
+          key = dateKey(dt);
+          if (cnpj) { ledger[cnpj] = key; ledgerChanged = true; }
+        }
       }
+      if (key) recoveredByKey[key] = (recoveredByKey[key] || 0) + 1;
+    } else if (cnpj && ledger[cnpj]) {
+      // Loja estava no livro-razão (já tinha recuperado antes) mas voltou a
+      // ficar Sem Estoque agora — remove a trava dela: se recuperar nesse
+      // futuro, é uma recuperação NOVA e merece um dia novo, não o antigo.
+      delete ledger[cnpj];
+      ledgerChanged = true;
     }
   });
+
+  if (ledgerChanged) saveRecoveryLedger(ledger);
 
   const semEstoqueAgora = totalLojas - comEstoqueAgora;
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
@@ -1653,6 +1727,10 @@ function renderEvolucaoLinha(evolucao) {
   const labels = evolucao.days.map(function (d) { return d.label; });
   const semEstoqueData = evolucao.days.map(function (d) { return d.semEstoque; });
   const comEstoqueData = evolucao.days.map(function (d) { return d.comEstoque; });
+  // Mesma "diferença de lojas em relação ao dia anterior" já usada no gráfico
+  // de barras (`renderEvolucaoDiario`) — pedido do usuário pra também
+  // aparecer aqui, no gráfico de linha (ver `d.subiu` em computeEvolucaoEstoque).
+  const difData = evolucao.days.map(function (d) { return (typeof d.subiu === 'number') ? d.subiu : null; });
 
   if (charts['chart-evolucao-linha']) charts['chart-evolucao-linha'].destroy();
   charts['chart-evolucao-linha'] = new Chart(canvas.getContext('2d'), {
@@ -1690,6 +1768,23 @@ function renderEvolucaoLinha(evolucao) {
             anchor: 'end', align: 'top', offset: 4,
             color: '#14151A',
             font: { family: 'Inter', size: 11, weight: '600' }
+          }
+        },
+        {
+          label: 'Diferença de lojas (dia anterior)',
+          data: difData,
+          borderColor: '#6C4AB6',
+          backgroundColor: '#6C4AB6',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#6C4AB6',
+          tension: 0.2,
+          fill: false,
+          datalabels: {
+            anchor: 'end', align: 'top', offset: 6,
+            color: '#6C4AB6',
+            font: { family: 'Inter', size: 10, weight: '600' },
+            formatter: function (value) { return value === null ? '' : (value > 0 ? '+' + value : value); }
           }
         }
       ]
