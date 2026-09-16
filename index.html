@@ -785,10 +785,13 @@
     <div class="charts-heading">Evolução do Estoque (total de lojas, não segue os filtros de GP/GN)</div>
     <p class="evolucao-nota">
       Antes de 08/09/2026 não temos acompanhamento dia a dia, então esse período inteiro entra como um
-      único ponto de partida ("07/09 e antes"). De 08 a 10/09/2026 usamos os números que você
-      acompanhou manualmente. A partir de 11/09/2026, o dia em que cada loja "subiu estoque" é
-      calculado automaticamente pela coluna <b>Última Atualização</b>: uma loja Com Estoque hoje, cuja
-      última atualização foi num certo dia, é contada como tendo subido estoque naquele dia. Uma loja
+      único ponto de partida ("07/09 e antes"), usando o valor de 08/09 como referência. De 08 a
+      10/09/2026 usamos os números que você acompanhou manualmente. <b>O dia de hoje sempre mostra a
+      contagem real e ao vivo</b> (a mesma da tela de Lojas) — nunca uma estimativa. Só os dias sem
+      nenhum dado próprio, entre o último número conhecido e hoje, são estimados a partir da coluna
+      <b>Última Atualização</b> (uma loja Com Estoque cuja última atualização caiu num certo dia "puxa"
+      mais a queda estimada pra aquele dia) — mas essa estimativa é sempre ajustada pra fechar
+      exatamente no próximo número real conhecido, nunca ultrapassando ou ficando aquém dele. Uma loja
       com Estoque = 0 <b>nunca</b> conta como tendo subido, mesmo que a Última Atualização dela seja
       recente — ela continua Sem Estoque. Se a aba <b>Historico_Estoque</b> já existir na planilha
       (gerada pelo gatilho diário do Apps Script), os dias que ela cobre usam o número real gravado
@@ -1431,28 +1434,45 @@ function formatDateBrShort(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMo
 function formatDateBrFull(dt) { return pad2(dt.getDate()) + '/' + pad2(dt.getMonth() + 1) + '/' + dt.getFullYear(); }
 function addDays(dt, n) { const c = new Date(dt.getTime()); c.setDate(c.getDate() + n); return c; }
 
-// Monta a série de dias (baseline + manuais + calculados) a partir da coluna
-// Última Atualização, seguindo exatamente a regra que o usuário pediu.
+// Monta a série de dias (baseline + manuais + hoje real + estimativa no meio)
+// a partir da coluna Última Atualização.
+//
+// **Corrigido em 16/09/2026** — o usuário reportou que o gráfico mostrava
+// "0 lojas sem estoque hoje" quando na realidade ele tinha mais de 300. Causa
+// raiz: a versão anterior tratava TODOS os dias (inclusive hoje) como um
+// valor CALCULADO por acúmulo a partir da baseline, e a baseline por sua vez
+// era "quantas lojas Com Estoque hoje NUNCA tiveram uma Última Atualização
+// depois de 07/09" — na base real, a grande maioria das lojas que já tinham
+// estoque também mostra uma Última Atualização recente (por qualquer motivo
+// que não "acabou de subir estoque"), então esse cálculo inflava demais a
+// quantidade de "recuperações" e, ao somar tudo, o modelo terminava batendo
+// artificialmente em 0 no dia de hoje — sem nenhuma relação com o valor real.
+//
+// A partir de agora: **"hoje" NUNCA é calculado — é sempre a contagem REAL e
+// ao vivo** (a mesma conta do doughnut da aba Lojas). Os 3 dias manuais
+// (08–10/09) continuam exatamente como o usuário informou. Só os dias SEM
+// nenhum dado próprio (entre 10/09 e hoje, ou entre dois registros da aba
+// Historico_Estoque) são estimados — e mesmo assim, a estimativa é obrigada
+// a "fechar a conta" batendo exatamente no próximo valor REAL conhecido; o
+// sinal da Última Atualização só decide COMO distribuir a queda entre os
+// dias do meio (quais dias tiveram mais atividade), nunca o total final.
 function computeEvolucaoEstoque(rows) {
   const uaIdx = EXPOSED_HEADERS.indexOf('Ultima Atualização');
-  let totalLojas = 0, comEstoqueTotal = 0;
+  let totalLojas = 0, comEstoqueAgora = 0;
   const recoveredByKey = {};
 
   rows.forEach(function (row) {
     const status = isEstoqueCritico(row);
     if (status === null) return; // valor de Estoque não reconhecido: fora da contagem, igual ao doughnut
     totalLojas++;
-    // REGRA CONFIRMADA COM O USUÁRIO (16/09/2026): só entra em "subiu estoque
-    // no dia X" quem está Com Estoque AGORA (Estoque >= 1). Uma loja com
-    // Estoque = 0 NUNCA conta como tendo subido, mesmo que a Última
-    // Atualização dela seja recente — ter sido "atualizada" recentemente
-    // não significa ter recebido estoque; ela continua Sem Estoque, e é o
-    // valor da coluna Estoque (via isEstoqueCritico), não a presença de uma
-    // data em Última Atualização, quem decide isso. Por isso o bloco de
-    // baixo (que olha a data e alimenta `recoveredByKey`) só roda dentro do
-    // `if (status === false)` — uma loja Sem Estoque nunca chega nele.
+    // REGRA CONFIRMADA COM O USUÁRIO (16/09/2026): só entra no sinal de "subiu
+    // estoque no dia X" quem está Com Estoque AGORA (Estoque >= 1). Uma loja
+    // com Estoque = 0 NUNCA conta como tendo subido, mesmo que a Última
+    // Atualização dela seja recente — ela continua Sem Estoque, e é o valor
+    // da coluna Estoque (via isEstoqueCritico), não a presença de uma data em
+    // Última Atualização, quem decide isso.
     if (status === false) {
-      comEstoqueTotal++;
+      comEstoqueAgora++;
       const dt = parseBrDate(row[uaIdx]);
       if (dt && dt.getTime() > EVOLUCAO_BASELINE_DATE.getTime()) {
         const key = dateKey(dt);
@@ -1461,54 +1481,96 @@ function computeEvolucaoEstoque(rows) {
     }
   });
 
-  const recoveredKeys = Object.keys(recoveredByKey);
-  const sumRecovered = recoveredKeys.reduce(function (a, k) { return a + recoveredByKey[k]; }, 0);
-  const baselineComEstoque = Math.max(0, comEstoqueTotal - sumRecovered);
+  const semEstoqueAgora = totalLojas - comEstoqueAgora;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
 
-  // Última data do gráfico: hoje, ou a maior data de recuperação encontrada nos
-  // dados (o que for mais tarde) — assim uma "Última Atualização" no futuro
-  // (planilha adiantada) não fica de fora do gráfico.
-  let maxDate = new Date(); maxDate.setHours(0, 0, 0, 0);
-  recoveredKeys.forEach(function (key) {
-    const p = key.split('-');
-    const d = new Date(parseInt(p[0], 10), parseInt(p[1], 10) - 1, parseInt(p[2], 10));
-    if (d.getTime() > maxDate.getTime()) maxDate = d;
+  // Âncoras conhecidas, em ordem cronológica: baseline, os 3 dias manuais, e
+  // hoje (valor real ao vivo). A baseline ("07/09 e antes") não tem nenhum
+  // dado confiável pra ser calculada a partir da Última Atualização (ver
+  // comentário acima) — na falta de algo melhor, usamos o próprio valor de
+  // 08/09 (primeiro dia com acompanhamento manual) como referência, supondo
+  // que não havia mudança relevante nos dias imediatamente antes dele.
+  const anchors = [];
+  const primeiroManual = EVOLUCAO_MANUAL_SEM_ESTOQUE[0];
+  anchors.push({
+    date: new Date(EVOLUCAO_BASELINE_DATE.getTime()),
+    semEstoque: primeiroManual ? primeiroManual.semEstoque : semEstoqueAgora,
+    label: formatDateBrShort(EVOLUCAO_BASELINE_DATE) + ' e antes',
+    origem: 'Base (sem dado próprio — usa 08/09 como referência)'
   });
+  EVOLUCAO_MANUAL_SEM_ESTOQUE.forEach(function (m) {
+    anchors.push({ date: new Date(m.date.getTime()), semEstoque: m.semEstoque, origem: 'Acompanhado manualmente' });
+  });
+  const ultimaAncora = anchors[anchors.length - 1];
+  if (dateKey(hoje) === dateKey(ultimaAncora.date)) {
+    // Hoje coincide com um dos dias manuais (só pode acontecer se o relógio
+    // do navegador cair exatamente num desses dias) — a contagem real ao
+    // vivo tem prioridade sobre o número manual antigo.
+    ultimaAncora.semEstoque = semEstoqueAgora;
+    ultimaAncora.origem = 'Real (contagem ao vivo)';
+  } else {
+    anchors.push({ date: new Date(hoje.getTime()), semEstoque: semEstoqueAgora, origem: 'Real (contagem ao vivo)' });
+  }
 
+  // Constrói dia a dia, preenchendo o intervalo ENTRE cada par de âncoras
+  // conhecidas com uma estimativa proporcional ao sinal de "recuperação"
+  // (recoveredByKey) — nunca deixando o resultado fugir da próxima âncora
+  // real, porque cada trecho é calculado isoladamente entre dois valores
+  // já conhecidos, nunca por acúmulo solto desde o início da série.
   const days = [];
-  let cursor = new Date(EVOLUCAO_BASELINE_DATE.getTime());
-  let semEstoqueAnterior = totalLojas - baselineComEstoque;
-  days.push({
-    date: new Date(cursor.getTime()),
-    label: formatDateBrShort(cursor) + ' e antes',
-    comEstoque: baselineComEstoque,
-    semEstoque: semEstoqueAnterior,
-    subiu: null,
-    origem: 'Base (sem acompanhamento diário)'
-  });
-
-  while (cursor.getTime() < maxDate.getTime()) {
-    cursor = addDays(cursor, 1);
-    const key = dateKey(cursor);
-    const manual = EVOLUCAO_MANUAL_SEM_ESTOQUE.find(function (m) { return dateKey(m.date) === key; });
-    let semEstoque, origem;
-    if (manual) {
-      semEstoque = manual.semEstoque;
-      origem = 'Acompanhado manualmente';
-    } else {
-      const subiu = recoveredByKey[key] || 0;
-      semEstoque = Math.max(0, semEstoqueAnterior - subiu);
-      origem = 'Calculado (Última Atualização)';
-    }
+  for (let i = 0; i < anchors.length; i++) {
+    const a = anchors[i];
     days.push({
-      date: new Date(cursor.getTime()),
-      label: formatDateBrShort(cursor),
-      comEstoque: totalLojas - semEstoque,
-      semEstoque: semEstoque,
-      subiu: Math.max(0, semEstoqueAnterior - semEstoque),
-      origem: origem
+      date: new Date(a.date.getTime()),
+      label: a.label || formatDateBrShort(a.date),
+      comEstoque: totalLojas - a.semEstoque,
+      semEstoque: a.semEstoque,
+      origem: a.origem
     });
-    semEstoqueAnterior = semEstoque;
+    if (i === anchors.length - 1) break;
+
+    const b = anchors[i + 1];
+    const gapDates = [];
+    let cursor = addDays(a.date, 1);
+    while (cursor.getTime() < b.date.getTime()) {
+      gapDates.push(new Date(cursor.getTime()));
+      cursor = addDays(cursor, 1);
+    }
+    if (!gapDates.length) continue;
+
+    const pesos = gapDates.map(function (d) { return recoveredByKey[dateKey(d)] || 0; });
+    const somaPesos = pesos.reduce(function (s, w) { return s + w; }, 0);
+    const quedaReal = a.semEstoque - b.semEstoque; // positivo = caindo (o normal); pode ser negativo
+    let acumulado = 0;
+    gapDates.forEach(function (d, idx) {
+      if (somaPesos > 0) {
+        // Distribui a queda REAL (entre as duas âncoras) proporcionalmente
+        // aos dias com mais sinal de "recuperação" pela Última Atualização —
+        // preserva o formato (quais dias tiveram mais atividade) sem deixar
+        // a soma final fugir do valor real da próxima âncora.
+        acumulado += quedaReal * (pesos[idx] / somaPesos);
+      } else {
+        // Sem nenhum sinal de recuperação no intervalo: distribui a queda de
+        // forma linear (uniforme) entre os dias, na falta de algo melhor.
+        acumulado = quedaReal * (idx + 1) / gapDates.length;
+      }
+      const semEstoqueDia = Math.round(a.semEstoque - acumulado);
+      days.push({
+        date: d,
+        label: formatDateBrShort(d),
+        comEstoque: totalLojas - semEstoqueDia,
+        semEstoque: semEstoqueDia,
+        origem: 'Estimado (proporcional à Última Atualização)'
+      });
+    });
+  }
+
+  // "Subiram estoque no dia" = diferença dia a dia da série já pronta (nunca
+  // um número solto vindo direto de recoveredByKey) — assim a coluna sempre
+  // bate exatamente com a diferença entre as linhas mostradas, inclusive nos
+  // trechos estimados/rescalonados.
+  for (let i = 0; i < days.length; i++) {
+    days[i].subiu = i === 0 ? null : Math.max(0, days[i - 1].semEstoque - days[i].semEstoque);
   }
 
   return { totalLojas: totalLojas, days: days };
