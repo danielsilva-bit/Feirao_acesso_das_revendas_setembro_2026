@@ -1652,28 +1652,47 @@ function renderEvolucaoLinha(evolucao) {
   if (!canvas || typeof Chart === 'undefined') return;
   const labels = evolucao.days.map(function (d) { return d.label; });
   const semEstoqueData = evolucao.days.map(function (d) { return d.semEstoque; });
+  const comEstoqueData = evolucao.days.map(function (d) { return d.comEstoque; });
 
   if (charts['chart-evolucao-linha']) charts['chart-evolucao-linha'].destroy();
   charts['chart-evolucao-linha'] = new Chart(canvas.getContext('2d'), {
     type: 'line',
     data: {
       labels: labels,
-      datasets: [{
-        label: 'Lojas Sem Estoque',
-        data: semEstoqueData,
-        borderColor: '#B23A48',
-        backgroundColor: '#B23A48',
-        borderWidth: 2,
-        pointRadius: 3,
-        pointBackgroundColor: '#B23A48',
-        tension: 0.2,
-        fill: false,
-        datalabels: {
-          anchor: 'end', align: 'top', offset: 4,
-          color: '#14151A',
-          font: { family: 'Inter', size: 11, weight: '600' }
+      datasets: [
+        {
+          label: 'Lojas Com Estoque',
+          data: comEstoqueData,
+          borderColor: '#2E8B57',
+          backgroundColor: '#2E8B57',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#2E8B57',
+          tension: 0.2,
+          fill: false,
+          datalabels: {
+            anchor: 'end', align: 'bottom', offset: 4,
+            color: '#14151A',
+            font: { family: 'Inter', size: 11, weight: '600' }
+          }
+        },
+        {
+          label: 'Lojas Sem Estoque',
+          data: semEstoqueData,
+          borderColor: '#B23A48',
+          backgroundColor: '#B23A48',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#B23A48',
+          tension: 0.2,
+          fill: false,
+          datalabels: {
+            anchor: 'end', align: 'top', offset: 4,
+            color: '#14151A',
+            font: { family: 'Inter', size: 11, weight: '600' }
+          }
         }
-      }]
+      ]
     },
     options: {
       responsive: true,
@@ -1684,8 +1703,8 @@ function renderEvolucaoLinha(evolucao) {
         y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
       },
       plugins: {
-        legend: { display: false },
-        title: { display: true, text: 'Evolução de lojas Sem Estoque (queda = lojas subindo estoque)', font: { family: 'Space Grotesk', size: 13 } }
+        legend: { display: true, position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
+        title: { display: true, text: 'Evolução de lojas Com Estoque x Sem Estoque (queda do Sem Estoque = lojas subindo estoque)', font: { family: 'Space Grotesk', size: 13 } }
       }
     },
     plugins: typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : []
@@ -1698,6 +1717,11 @@ function renderEvolucaoDiario(evolucao) {
   const labels = evolucao.days.map(function (d) { return d.label; });
   const comData = evolucao.days.map(function (d) { return d.comEstoque; });
   const semData = evolucao.days.map(function (d) { return d.semEstoque; });
+  // Diferença de lojas em relação ao dia anterior (mesmo valor já calculado em
+  // computeEvolucaoEstoque/applyHistoricoOverlay como "subiu" — quantas lojas
+  // passaram de Sem Estoque pra Com Estoque naquele dia). Primeiro dia da
+  // série não tem dia anterior pra comparar, fica null (Chart.js pula o ponto).
+  const difData = evolucao.days.map(function (d) { return (typeof d.subiu === 'number') ? d.subiu : null; });
 
   if (charts['chart-evolucao-diario']) charts['chart-evolucao-diario'].destroy();
   charts['chart-evolucao-diario'] = new Chart(canvas.getContext('2d'), {
@@ -1712,6 +1736,26 @@ function renderEvolucaoDiario(evolucao) {
         {
           label: 'Sem Estoque', data: semData, backgroundColor: '#B23A48', borderRadius: 4, maxBarThickness: 28,
           datalabels: { anchor: 'end', align: 'top', offset: 2, color: '#14151A', font: { family: 'Inter', size: 10, weight: '600' } }
+        },
+        {
+          type: 'line',
+          label: 'Diferença de lojas (dia anterior)',
+          data: difData,
+          borderColor: '#6C4AB6',
+          backgroundColor: '#6C4AB6',
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#6C4AB6',
+          tension: 0.2,
+          fill: false,
+          yAxisID: 'y',
+          order: 0,
+          datalabels: {
+            anchor: 'end', align: 'top', offset: 6,
+            color: '#6C4AB6',
+            font: { family: 'Inter', size: 10, weight: '600' },
+            formatter: function (value) { return value === null ? '' : (value > 0 ? '+' + value : value); }
+          }
         }
       ]
     },
