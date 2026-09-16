@@ -574,6 +574,7 @@
   <nav id="view-tabs">
     <button class="view-tab active" id="tab-lojas" type="button">Lojas</button>
     <button class="view-tab" id="tab-logs" type="button">Logs de Acesso</button>
+    <button class="view-tab" id="tab-ranking" type="button">Ranking GN Sem Estoque</button>
   </nav>
   <div id="user-box" style="display:none;">
     <span>Logado como <b id="user-email"></b></span>
@@ -699,6 +700,33 @@
       <table>
         <thead><tr id="logs-table-head"></tr></thead>
         <tbody id="logs-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="ranking-view">
+    <div class="toolbar">
+      <div class="actions">
+        <button class="btn btn-gold" id="ranking-refresh-btn">↻ Atualizar</button>
+      </div>
+    </div>
+
+    <div class="charts-heading">Ranking de GN por lojas sem estoque (maior para menor)</div>
+
+    <div id="ranking-results-count"></div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>GN</th>
+            <th>Lojas sem Estoque</th>
+            <th>Total de Lojas</th>
+            <th>% sem Estoque (do próprio GN)</th>
+          </tr>
+        </thead>
+        <tbody id="ranking-table-body"></tbody>
       </table>
     </div>
   </div>
@@ -1053,18 +1081,89 @@ document.getElementById('logout-btn') && document.getElementById('logout-btn').a
   location.reload();
 });
 
-/* ==================== NAVEGAÇÃO ENTRE "LOJAS" E "LOGS DE ACESSO" (só ultra) ==================== */
+/* ==================== NAVEGAÇÃO ENTRE "LOJAS", "LOGS DE ACESSO" E "RANKING GN
+   SEM ESTOQUE" (as 3 abas dentro de #view-tabs, só aparecem pra 'ultra' —
+   inclusive a de ranking; 'ultra_externo' vê tudo em Lojas mas NUNCA vê
+   #view-tabs, então nunca vê nenhuma das 3 abas, ver enterDashboard()) ====== */
 document.getElementById('tab-lojas').addEventListener('click', function () { showView('lojas'); });
 document.getElementById('tab-logs').addEventListener('click', function () { showView('logs'); });
+document.getElementById('tab-ranking').addEventListener('click', function () { showView('ranking'); });
 
 function showView(view) {
   const isLojas = view === 'lojas';
+  const isLogs = view === 'logs';
+  const isRanking = view === 'ranking';
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
-  document.getElementById('logs-view').style.display = isLojas ? 'none' : 'block';
+  document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
+  document.getElementById('ranking-view').style.display = isRanking ? 'block' : 'none';
   document.getElementById('tab-lojas').classList.toggle('active', isLojas);
-  document.getElementById('tab-logs').classList.toggle('active', !isLojas);
-  if (!isLojas && !logsLoaded) loadLogs();
+  document.getElementById('tab-logs').classList.toggle('active', isLogs);
+  document.getElementById('tab-ranking').classList.toggle('active', isRanking);
+  if (isLogs && !logsLoaded) loadLogs();
+  if (isRanking) renderGnRanking();
 }
+
+/* ==================== RANKING GN SEM ESTOQUE (só ultra) ====================
+   Pedido do usuário em 16/09/2026: uma aba tipo "dinâmica" (pivot) listando,
+   por GN, a quantidade de lojas sem estoque, do maior pro menor, com valor
+   absoluto e percentual. Percentual = taxa de ruptura DENTRO da própria
+   carteira do GN (lojas sem estoque do GN ÷ total de lojas do GN, com
+   Estoque reconhecido) — confirmado com o usuário via AskUserQuestion (a
+   outra opção seria % de participação no total geral de sem-estoque de
+   todos os GNs, padrão já usado nos cards da aba Logs; usuário preferiu a
+   taxa por GN). Sempre parte de `allRows` (universo já sem restrição de
+   carteira pra ultra, e já excluindo lojas sem Login/Senha — mesma regra
+   de sempre) — não depende dos filtros da toolbar da aba Lojas, igual à
+   aba Logs de Acesso, que também é independente. */
+function computeGnSemEstoqueRanking(rows) {
+  const gnIdx = EXPOSED_HEADERS.indexOf('GN_NOME');
+  const byGn = {};
+  rows.forEach(function (row) {
+    const gn = (row[gnIdx] || '').toString().trim();
+    if (!gn) return; // sem GN_NOME preenchido: não entra no ranking
+    const critStatus = isEstoqueCritico(row);
+    if (critStatus === null) return; // Estoque não reconhecido: fora das contagens, mesma regra do gráfico de Lojas
+    if (!byGn[gn]) byGn[gn] = { gn: gn, semEstoque: 0, total: 0 };
+    byGn[gn].total++;
+    if (critStatus === true) byGn[gn].semEstoque++;
+  });
+  const list = Object.keys(byGn).map(function (k) {
+    const item = byGn[k];
+    item.pct = item.total > 0 ? (item.semEstoque / item.total * 100) : 0;
+    return item;
+  });
+  // Do maior pro menor em quantidade absoluta de lojas sem estoque (pedido do usuário).
+  list.sort(function (a, b) { return b.semEstoque - a.semEstoque; });
+  return list;
+}
+
+function renderGnRanking() {
+  const list = computeGnSemEstoqueRanking(allRows);
+  const tbody = document.getElementById('ranking-table-body');
+  tbody.innerHTML = '';
+  list.forEach(function (item, i) {
+    const tr = document.createElement('tr');
+    function addCell(text) {
+      const td = document.createElement('td');
+      td.textContent = text;
+      tr.appendChild(td);
+    }
+    addCell(i + 1);
+    addCell(item.gn);
+    addCell(item.semEstoque.toLocaleString('pt-BR'));
+    addCell(item.total.toLocaleString('pt-BR'));
+    addCell(item.pct.toFixed(1).replace('.', ',') + '%');
+    tbody.appendChild(tr);
+  });
+  document.getElementById('ranking-results-count').textContent =
+    list.length + ' GN(s) exibido(s), ordenados do maior para o menor número de lojas sem estoque.';
+}
+
+document.getElementById('ranking-refresh-btn').addEventListener('click', function () {
+  loadData().then(function () {
+    if (document.getElementById('ranking-view').style.display !== 'none') renderGnRanking();
+  });
+});
 
 /* ==================== BACKEND (log + e-mail) ==================== */
 function callBackend(action, extra) {
