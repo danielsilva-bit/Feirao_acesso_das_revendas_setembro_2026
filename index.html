@@ -166,6 +166,8 @@
   #login-status.info { color: var(--muted); display: block; }
 
   #dashboard { display: none; }
+  #filters-bar { display: none; }
+  #ranking-view { display: none; }
 
   .toolbar {
     background: var(--card);
@@ -594,39 +596,44 @@
     <div id="login-status"></div>
   </div>
 
+  <div id="status-msg"></div>
+
+  <div id="filters-bar" class="toolbar">
+    <div class="field" id="search-field">
+      <label>Buscar (todas as colunas)</label>
+      <input type="text" id="f-search" placeholder="Digite para buscar..." />
+    </div>
+    <div class="field">
+      <label>GP</label>
+      <div class="msel" id="f-gp"></div>
+    </div>
+    <div class="field">
+      <label>GN</label>
+      <div class="msel" id="f-gn"></div>
+    </div>
+    <div class="field">
+      <label>Faixa Estoque</label>
+      <div class="msel" id="f-faixa-estoque"></div>
+    </div>
+    <div class="field">
+      <label>Faixa de Atualização</label>
+      <div class="msel" id="f-faixa-atualizacao"></div>
+    </div>
+    <div class="field">
+      <label>Comercial</label>
+      <div class="msel" id="f-comercial"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-gold" id="refresh-btn">↻ Atualizar</button>
+      <button class="btn btn-secondary" id="clear-filters-btn">Limpar filtros</button>
+    </div>
+  </div>
+
   <div id="dashboard">
-    <div id="status-msg"></div>
-
     <div class="toolbar">
-      <div class="field" id="search-field">
-        <label>Buscar (todas as colunas)</label>
-        <input type="text" id="f-search" placeholder="Digite para buscar..." />
-      </div>
-      <div class="field">
-        <label>GP</label>
-        <div class="msel" id="f-gp"></div>
-      </div>
-      <div class="field">
-        <label>GN</label>
-        <div class="msel" id="f-gn"></div>
-      </div>
-      <div class="field">
-        <label>Faixa Estoque</label>
-        <div class="msel" id="f-faixa-estoque"></div>
-      </div>
-      <div class="field">
-        <label>Faixa de Atualização</label>
-        <div class="msel" id="f-faixa-atualizacao"></div>
-      </div>
-      <div class="field">
-        <label>Comercial</label>
-        <div class="msel" id="f-comercial"></div>
-      </div>
-
       <div class="actions">
         <a class="btn btn-steel" href="https://console.usadosbr.com/painel-revenda" target="_blank" rel="noopener noreferrer">🔑 Publicar Estoque/Resetar a Senha</a>
-        <button class="btn btn-gold" id="refresh-btn">↻ Atualizar</button>
-        <button class="btn btn-secondary" id="clear-filters-btn">Limpar filtros</button>
         <button class="btn btn-green" id="download-btn">⬇ Baixar Relação de Lojas Atualizada</button>
         <button class="btn btn-primary" id="email-btn">✉ Enviar para meu e-mail</button>
       </div>
@@ -707,11 +714,11 @@
   <div id="ranking-view">
     <div class="toolbar">
       <div class="actions">
-        <button class="btn btn-gold" id="ranking-refresh-btn">↻ Atualizar</button>
+        <button class="btn btn-green" id="ranking-download-btn">⬇ Baixar Ranking (Excel)</button>
       </div>
     </div>
 
-    <div class="charts-heading">Ranking de GN por lojas sem estoque (maior para menor)</div>
+    <div class="charts-heading">Ranking de GN por lojas sem estoque (maior para menor) — segue os filtros acima</div>
 
     <div id="ranking-results-count"></div>
 
@@ -1067,6 +1074,7 @@ async function handleLogin() {
 function enterDashboard() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('filters-bar').style.display = 'flex';
   document.getElementById('user-box').style.display = 'flex';
   const roleLabel = userRole === 'ultra' ? ' (ultra)' : (userRole === 'ultra_externo' ? ' (ultra externo)' : (userRole === 'master' ? ' (master)' : ''));
   document.getElementById('user-email').textContent = userEmail + roleLabel;
@@ -1096,6 +1104,10 @@ function showView(view) {
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
   document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
   document.getElementById('ranking-view').style.display = isRanking ? 'block' : 'none';
+  // #filters-bar (busca + GP/GN/Faixa Estoque/Faixa de Atualização/Comercial + Atualizar/Limpar
+  // filtros) é compartilhado entre Lojas e Ranking (16/09/2026, pedido do usuário) — só some na
+  // aba de Logs, que tem seu próprio filtro de período independente.
+  document.getElementById('filters-bar').style.display = (isLojas || isRanking) ? 'flex' : 'none';
   document.getElementById('tab-lojas').classList.toggle('active', isLojas);
   document.getElementById('tab-logs').classList.toggle('active', isLogs);
   document.getElementById('tab-ranking').classList.toggle('active', isRanking);
@@ -1111,10 +1123,14 @@ function showView(view) {
    Estoque reconhecido) — confirmado com o usuário via AskUserQuestion (a
    outra opção seria % de participação no total geral de sem-estoque de
    todos os GNs, padrão já usado nos cards da aba Logs; usuário preferiu a
-   taxa por GN). Sempre parte de `allRows` (universo já sem restrição de
-   carteira pra ultra, e já excluindo lojas sem Login/Senha — mesma regra
-   de sempre) — não depende dos filtros da toolbar da aba Lojas, igual à
-   aba Logs de Acesso, que também é independente. */
+   taxa por GN).
+   **Atualizado em 16/09/2026:** a pedido do usuário, agora RESPEITA os
+   mesmos filtros da aba Lojas (busca + GP/GN/Faixa Estoque/Faixa de
+   Atualização/Comercial, via `getFilteredRows()`) em vez de sempre usar o
+   universo completo (`allRows`) — por isso `#filters-bar` passou a ficar
+   visível também nesta aba (ver `showView()`). Sempre parte de linhas já
+   sem restrição de carteira pra ultra e já sem lojas sem Login/Senha
+   (herdado de `allRows`/`getFilteredRows()`). */
 function computeGnSemEstoqueRanking(rows) {
   const gnIdx = EXPOSED_HEADERS.indexOf('GN_NOME');
   const byGn = {};
@@ -1137,32 +1153,46 @@ function computeGnSemEstoqueRanking(rows) {
   return list;
 }
 
+const RANKING_HEADERS = ['#', 'GN', 'Lojas sem Estoque', 'Total de Lojas', '% sem Estoque (do próprio GN)'];
+
+function gnRankingToDisplayRows(list) {
+  return list.map(function (item, i) {
+    return [i + 1, item.gn, item.semEstoque, item.total, item.pct.toFixed(1).replace('.', ',') + '%'];
+  });
+}
+
 function renderGnRanking() {
-  const list = computeGnSemEstoqueRanking(allRows);
+  const list = computeGnSemEstoqueRanking(getFilteredRows());
   const tbody = document.getElementById('ranking-table-body');
   tbody.innerHTML = '';
-  list.forEach(function (item, i) {
+  gnRankingToDisplayRows(list).forEach(function (cells) {
     const tr = document.createElement('tr');
-    function addCell(text) {
+    cells.forEach(function (cell, idx) {
       const td = document.createElement('td');
-      td.textContent = text;
+      td.textContent = idx >= 2 && idx <= 3 ? Number(cell).toLocaleString('pt-BR') : cell;
       tr.appendChild(td);
-    }
-    addCell(i + 1);
-    addCell(item.gn);
-    addCell(item.semEstoque.toLocaleString('pt-BR'));
-    addCell(item.total.toLocaleString('pt-BR'));
-    addCell(item.pct.toFixed(1).replace('.', ',') + '%');
+    });
     tbody.appendChild(tr);
   });
   document.getElementById('ranking-results-count').textContent =
     list.length + ' GN(s) exibido(s), ordenados do maior para o menor número de lojas sem estoque.';
 }
 
-document.getElementById('ranking-refresh-btn').addEventListener('click', function () {
-  loadData().then(function () {
-    if (document.getElementById('ranking-view').style.display !== 'none') renderGnRanking();
-  });
+/* Baixar Ranking (Excel/CSV) — pedido do usuário em 16/09/2026, mesmo padrão do
+   #download-btn da aba Lojas (SheetJS com fallback pra CSV), mas exportando a
+   lista de GN já filtrada em vez da relação de lojas. */
+document.getElementById('ranking-download-btn').addEventListener('click', function () {
+  const list = computeGnSemEstoqueRanking(getFilteredRows());
+  const rows = gnRankingToDisplayRows(list);
+
+  if (typeof XLSX !== 'undefined') {
+    downloadExcel(RANKING_HEADERS, rows, 'ranking_gn_sem_estoque.xlsx', [4]);
+    showStatus('Excel do ranking baixado com ' + rows.length + ' GN(s).', 'success');
+  } else {
+    downloadCsv(RANKING_HEADERS, rows, 'ranking_gn_sem_estoque.csv');
+    showStatus('Não consegui gerar o Excel agora — baixei em CSV. Tente atualizar a página.', 'error');
+  }
+  logToBackend('download');
 });
 
 /* ==================== BACKEND (log + e-mail) ==================== */
@@ -1376,6 +1406,11 @@ function renderTable() {
     rows.length + ' de ' + allRows.length + ' lojas exibidas' + scopeNote;
 
   updateCharts(rows);
+
+  // #filters-bar agora é compartilhado com a aba Ranking (16/09/2026) — qualquer
+  // mudança de filtro passa por aqui, então re-renderiza o ranking também, se a
+  // aba dele estiver aberta no momento (senão fica com dado velho até reabrir).
+  if (document.getElementById('ranking-view').style.display !== 'none') renderGnRanking();
 }
 
 /* ==================== GRÁFICOS ==================== */
@@ -1511,11 +1546,25 @@ document.getElementById('download-btn').addEventListener('click', function () {
   logToBackend('download');
 });
 
-function downloadExcel(headers, rows, filename) {
+function downloadExcel(headers, rows, filename, textColumns) {
   const aoa = [headers].concat(rows.map(function (r) {
     return r.map(function (cell) { return cell === null || cell === undefined ? '' : cell; });
   }));
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  // O SheetJS tenta "adivinhar" o tipo de células de texto que parecem número
+  // (ex.: "75,0%" vira o número 7.5, corrompendo o valor). Para colunas que
+  // devem permanecer texto (ex.: percentual formatado do Ranking), forçamos
+  // de volta o tipo string depois da conversão automática.
+  if (textColumns && textColumns.length) {
+    aoa.forEach(function (row, r) {
+      if (r === 0) return; // cabeçalho já é string
+      textColumns.forEach(function (c) {
+        const addr = XLSX.utils.encode_cell({ r: r, c: c });
+        const original = row[c] === undefined ? '' : String(row[c]);
+        ws[addr] = { t: 's', v: original };
+      });
+    });
+  }
   // Largura de coluna aproximada pelo conteúdo, pra já vir legível ao abrir
   ws['!cols'] = headers.map(function (h, i) {
     let maxLen = String(h).length;
