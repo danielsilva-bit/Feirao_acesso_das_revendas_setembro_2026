@@ -788,9 +788,11 @@
       único ponto de partida ("07/09 e antes"). De 08 a 10/09/2026 usamos os números que você
       acompanhou manualmente. A partir de 11/09/2026, o dia em que cada loja "subiu estoque" é
       calculado automaticamente pela coluna <b>Última Atualização</b>: uma loja Com Estoque hoje, cuja
-      última atualização foi num certo dia, é contada como tendo subido estoque naquele dia. Se a aba
-      <b>Historico_Estoque</b> já existir na planilha (gerada pelo gatilho diário do Apps Script), os
-      dias que ela cobre usam o número real gravado naquele dia em vez da estimativa.
+      última atualização foi num certo dia, é contada como tendo subido estoque naquele dia. Uma loja
+      com Estoque = 0 <b>nunca</b> conta como tendo subido, mesmo que a Última Atualização dela seja
+      recente — ela continua Sem Estoque. Se a aba <b>Historico_Estoque</b> já existir na planilha
+      (gerada pelo gatilho diário do Apps Script), os dias que ela cobre usam o número real gravado
+      naquele dia em vez da estimativa.
     </p>
     <div class="charts-grid">
       <div class="chart-box chart-box-wide"><canvas id="chart-evolucao-linha"></canvas></div>
@@ -1440,6 +1442,15 @@ function computeEvolucaoEstoque(rows) {
     const status = isEstoqueCritico(row);
     if (status === null) return; // valor de Estoque não reconhecido: fora da contagem, igual ao doughnut
     totalLojas++;
+    // REGRA CONFIRMADA COM O USUÁRIO (16/09/2026): só entra em "subiu estoque
+    // no dia X" quem está Com Estoque AGORA (Estoque >= 1). Uma loja com
+    // Estoque = 0 NUNCA conta como tendo subido, mesmo que a Última
+    // Atualização dela seja recente — ter sido "atualizada" recentemente
+    // não significa ter recebido estoque; ela continua Sem Estoque, e é o
+    // valor da coluna Estoque (via isEstoqueCritico), não a presença de uma
+    // data em Última Atualização, quem decide isso. Por isso o bloco de
+    // baixo (que olha a data e alimenta `recoveredByKey`) só roda dentro do
+    // `if (status === false)` — uma loja Sem Estoque nunca chega nele.
     if (status === false) {
       comEstoqueTotal++;
       const dt = parseBrDate(row[uaIdx]);
