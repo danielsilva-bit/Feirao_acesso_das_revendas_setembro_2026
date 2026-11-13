@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Feirão Setembro 2026 — Lojas com estoque desatualizado</title>
+<title>Feirão Dezembro 2026 — Lojas com estoque desatualizado</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -169,6 +169,7 @@
   #filters-bar { display: none; }
   #ranking-view { display: none; }
   #evolucao-view { display: none; }
+  #disparos-view { display: none; }
   .evolucao-nota {
     font-size: 13px;
     color: var(--muted, #5B6472);
@@ -479,6 +480,13 @@
   }
   .badge-green { background: var(--green-bg); color: var(--green); }
   .badge-red { background: #FBEAEC; color: var(--danger); }
+  .badge-gray { background: var(--gray-bg); color: var(--muted); }
+  /* Colunas de disparo de e-mail (Disparos / Enviado para) */
+  .col-disp { white-space: normal; word-break: break-word; min-width: 190px; max-width: 290px; }
+  .disp-main b { font-weight: 700; }
+  .disp-main b.disp-zero { font-weight: 400; color: var(--muted); }
+  .disp-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 3px; white-space: normal; word-break: break-word; }
+  @media (max-width: 720px) { .col-disp { max-width: none; min-width: 0; } }
 
   .charts-heading {
     font-family: 'IBM Plex Mono', monospace;
@@ -522,6 +530,7 @@
   }
   .stat-card-usadosbr { border-left-color: var(--usadosbr-green); }
   .stat-card-c6 { border-left-color: var(--steel); }
+  .stat-card-warn { border-left-color: var(--danger); }
   .stat-label {
     font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
@@ -592,13 +601,14 @@
 <header>
   <div>
     <div class="eyebrow">Usadosbr · Feirão</div>
-    <h1>Feirão Setembro 2026 — Lojas com estoque desatualizado</h1>
+    <h1>Feirão Dezembro 2026 — Lojas com estoque desatualizado</h1>
   </div>
   <nav id="view-tabs">
     <button class="view-tab active" id="tab-lojas" type="button">Lojas</button>
     <button class="view-tab" id="tab-logs" type="button">Logs de Acesso</button>
     <button class="view-tab" id="tab-ranking" type="button">Ranking GN Sem Estoque</button>
     <button class="view-tab" id="tab-evolucao" type="button">Evolução do Estoque</button>
+    <button class="view-tab" id="tab-disparos" type="button">Disparos</button>
   </nav>
   <div id="user-box" style="display:none;">
     <span>Logado como <b id="user-email"></b></span>
@@ -609,7 +619,7 @@
 <main>
 
   <div id="login-screen">
-    <div class="eyebrow">Usadosbr · Feirão Setembro 2026</div>
+    <div class="eyebrow">Usadosbr · Feirão Dezembro 2026</div>
     <h2>Acesso restrito</h2>
     <p>Este link é público, mas os dados só são exibidos para e-mails autorizados.<br/>
        Digite seu e-mail para continuar.</p>
@@ -779,6 +789,45 @@
     </div>
   </div>
 
+  <div id="disparos-view">
+    <div id="disparos-status-msg"></div>
+
+    <div class="toolbar">
+      <div class="field" id="disparos-search-field">
+        <label>Buscar (loja, GN, contato...)</label>
+        <input type="text" id="disparos-search" placeholder="Digite para buscar..." />
+      </div>
+      <div class="field">
+        <label>Canal</label>
+        <select id="disparos-f-canal"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label>Status envio</label>
+        <select id="disparos-f-problema"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label>Mensagem</label>
+        <select id="disparos-f-msg"><option value="">Todas</option></select>
+      </div>
+      <div class="actions">
+        <button class="btn btn-gold" id="disparos-refresh-btn">↻ Atualizar</button>
+        <button class="btn btn-green" id="disparos-download-btn">⬇ Baixar lista</button>
+      </div>
+    </div>
+
+    <div class="charts-heading">Resumo dos disparos (e-mail pelo script, WhatsApp pelo retorno do Neppo colado na planilha)</div>
+    <div class="stats-grid" id="disparos-stats"></div>
+
+    <div class="charts-heading">Status dos envios — e-mail e WhatsApp (com e sem erro; corrija os que falharam e dispare de novo)</div>
+    <div id="disparos-results-count"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="disparos-table-head"></tr></thead>
+        <tbody id="disparos-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
   <div id="evolucao-view">
     <div id="evolucao-status-msg"></div>
 
@@ -847,6 +896,30 @@ const LOGS_TAB = 'Logs';
 // conferimos se os cabeçalhos batem antes de confiar no resultado.
 const HISTORICO_TAB = 'Historico_Estoque';
 const HISTORICO_EXPECTED_HEADERS = ['Data', 'Total Lojas', 'Com Estoque', 'Sem Estoque'];
+// Aba "Disparos_Resumo": gerada e atualizada pelo script de disparos (1 linha por
+// loja: quantos e-mails enviamos, quando, para quem e quem foi em cópia). Se ela
+// ainda não existir, o gviz devolve a 1ª aba por engano, então conferimos os cabeçalhos.
+const DISPARO_TAB = 'Disparos_Resumo';
+const DISPARO_EXPECTED_HEADERS = ['CNPJ', 'Loja', 'GN', 'Qtd envios'];
+const DISPARO_HEADERS = ['Disparos', 'Enviado para', 'Cópia Envio'];
+// Quem enxerga os E-MAILS (Para/Cc) na tabela. A quantidade/data de envios aparece para todos.
+// Tire um perfil desta lista para ele ver só a quantidade, sem os e-mails.
+const DISPARO_EMAILS_VISIVEL_PARA = ['ultra', 'ultra_externo', 'master', 'gn'];
+const DISPARO_MODELO_LABEL = {
+  EMAIL1: 'Sem estoque (com login)',
+  EMAIL2: 'Sem estoque (sem login)',
+  EMAIL3: 'Desatualizado (com login)',
+  EMAIL4: 'Desatualizado (sem login)'
+};
+let disparosByCnpj = {};
+// Retorno do Neppo (WhatsApp): o Daniel COLA o export do Neppo na aba Neppo_Retorno (colunas do export
+// + "Mensagem": Msg1/Msg2/Msg3). O Dash casa o número com o telefone da loja (Telefone Onboarding) ou do GN.
+const NEPPO_TAB = 'Neppo_Retorno';
+const NEPPO_EXPECTED_HEADERS = ['Nome do Contato', 'Número', 'Status', 'Hora Envio'];
+// Aba gerada pelo script de disparos: e-mails com falha de envio ou devolvidos (inválidos)
+const CONTATOS_TAB = 'Disparos_Contatos';
+const CONTATOS_EXPECTED_HEADERS = ['Canal', 'Problema', 'Contato', 'CNPJ'];
+let neppoRows = [], neppoAviso = '', contatosRows = [], phoneIndex = {}, whatsByCnpj = {};
 const LOG_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzfCZ0o2euEGjE9PbKdHIYMAKdYYWm8IluHGYnkDrrWztMGSs8-XkhvL0_1ytoZNQJpAg/exec';
 
 // Colunas exibidas, na ordem pedida: A,B,C,D,E,G,H,J,K,L,M,N,O,P(Comercial)
@@ -1191,16 +1264,19 @@ document.getElementById('tab-lojas').addEventListener('click', function () { sho
 document.getElementById('tab-logs').addEventListener('click', function () { showView('logs'); });
 document.getElementById('tab-ranking').addEventListener('click', function () { showView('ranking'); });
 document.getElementById('tab-evolucao').addEventListener('click', function () { showView('evolucao'); });
+document.getElementById('tab-disparos').addEventListener('click', function () { showView('disparos'); });
 
 function showView(view) {
   const isLojas = view === 'lojas';
   const isLogs = view === 'logs';
   const isRanking = view === 'ranking';
   const isEvolucao = view === 'evolucao';
+  const isDisparos = view === 'disparos';
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
   document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
   document.getElementById('ranking-view').style.display = isRanking ? 'block' : 'none';
   document.getElementById('evolucao-view').style.display = isEvolucao ? 'block' : 'none';
+  document.getElementById('disparos-view').style.display = isDisparos ? 'block' : 'none';
   // #filters-bar (busca + GP/GN/Faixa Estoque/Faixa de Atualização/Comercial + Atualizar/Limpar
   // filtros) é compartilhado entre Lojas e Ranking (16/09/2026, pedido do usuário) — só some na
   // aba de Logs e na de Evolução do Estoque, que não seguem filtro de carteira (é uma visão
@@ -1210,6 +1286,8 @@ function showView(view) {
   document.getElementById('tab-logs').classList.toggle('active', isLogs);
   document.getElementById('tab-ranking').classList.toggle('active', isRanking);
   document.getElementById('tab-evolucao').classList.toggle('active', isEvolucao);
+  document.getElementById('tab-disparos').classList.toggle('active', isDisparos);
+  if (isDisparos) openDisparosView();
   if (isLogs && !logsLoaded) loadLogs();
   if (isRanking) renderGnRanking();
   if (isEvolucao) renderEvolucaoEstoque();
@@ -1906,6 +1984,346 @@ function logToBackend(action, detalhe) {
   callBackend(action, detalhe !== undefined ? { detalhe: detalhe } : undefined).catch(() => {});
 }
 
+/* ==================== DISPAROS DE E-MAIL (aba Disparos_Resumo) ==================== */
+function cnpjKeyDisparo(v) { return String(v || '').replace(/\D/g, '').replace(/^0+/, ''); }
+
+async function loadDisparosResumo() {
+  disparosByCnpj = {};
+  try {
+    const res = await fetch(gvizUrl(DISPARO_TAB), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
+    if (!DISPARO_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return; // aba ainda não existe
+    const map = {};
+    parseCSVToObjects(csv).forEach(function (o) {
+      const k = cnpjKeyDisparo(o['CNPJ']);
+      if (k) map[k] = o;
+    });
+    disparosByCnpj = map;
+  } catch (e) { disparosByCnpj = {}; }
+}
+
+// "13/11/2026 09:00:05" -> "13/11 09:00"
+function shortDisparoDate(str) {
+  const m = String(str || '').match(/^(\d{2}\/\d{2})\/\d{4}\s+(\d{2}:\d{2})/);
+  return m ? m[1] + ' ' + m[2] : String(str || '');
+}
+
+/* ---- WhatsApp (Neppo_Retorno) ---- */
+function normPhone(v) {
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.startsWith('55') && (d.length === 12 || d.length === 13)) return d;
+  if (d.length === 10 || d.length === 11) return '55' + d;
+  return d;
+}
+function formatPhone(n) {
+  const d = String(n || '');
+  const m = d.match(/^55(\d{2})(\d{4,5})(\d{4})$/);
+  return m ? '+55 ' + m[1] + ' ' + m[2] + '-' + m[3] : d;
+}
+function parseDisparoHora(str) {
+  const t = String(str || '').trim();
+  let m = t.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0));
+  m = t.match(/^(\d{2})\/(\d{2})\/(\d{4})[ ,]+(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1], +m[4], +m[5], +(m[6] || 0));
+  return null;
+}
+function motivoNeppo(raw) {
+  const t = String(raw || '').trim();
+  if (!t) return '';
+  try {
+    const j = JSON.parse(t);
+    const e = Array.isArray(j) ? j[0] : j;
+    if (e && (e.title || e.message)) return (e.title || e.message) + (e.code ? ' (' + e.code + ')' : '');
+  } catch (x) {}
+  return t.slice(0, 140);
+}
+function buildPhoneIndex(objects) {
+  const idx = {};
+  objects.forEach(function (o) {
+    const p = normPhone(o['Telefone Onboarding']);
+    if (p && !idx[p]) idx[p] = { tipo: 'loja', cnpj: cnpjKeyDisparo(o['REV_CNPJ']), loja: o['REV_NOME'] || '', gn: o['GN_NOME'] || '' };
+  });
+  objects.forEach(function (o) {
+    // a coluna Q da Base_lojas traz o telefone do GN (o cabeçalho antigo era "Envio Atualização Estoque")
+    const g = normPhone(o['Telefone GN'] || o['Envio Atualização Estoque']);
+    if (g && !idx[g]) idx[g] = { tipo: 'gn', cnpj: '', loja: '', gn: o['GN_NOME'] || '' };
+  });
+  phoneIndex = idx;
+}
+async function loadNeppoRetorno() {
+  neppoRows = []; neppoAviso = '';
+  try {
+    const res = await fetch(gvizUrl(NEPPO_TAB), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
+    if (!NEPPO_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return; // aba ainda não existe
+    const seen = {}; let sci = 0;
+    parseCSVToObjects(csv).forEach(function (o, i) {
+      const raw = String(o['Número'] || '').trim();
+      if (!raw) return;
+      if (/e\+/i.test(raw)) { sci++; return; }
+      const num = normPhone(raw), hora = o['Hora Envio'] || '', msg = (o['Mensagem'] || '').trim() || '—';
+      const status = String(o['Status'] || '').trim().toUpperCase();
+      const key = [msg, num, hora, status].join('|');
+      if (seen[key]) return;   // mesma linha colada duas vezes
+      seen[key] = true;
+      neppoRows.push({ ordem: i, nome: o['Nome do Contato'] || '', num: num, status: status, hora: hora, t: parseDisparoHora(hora),
+        motivo: motivoNeppo(o['Motivo da Falha']), msg: msg, match: phoneIndex[num] || null });
+    });
+    if (sci) neppoAviso = sci + ' linha(s) com o Número em notação científica (ex.: 5,5E+12) foram ignoradas — na aba Neppo_Retorno, formate a coluna B como "Texto simples" e cole de novo.';
+  } catch (e) { neppoRows = []; }
+}
+const LOG_TAB = 'Disparos';
+const LOG_EXPECTED_HEADERS = ['Dia', 'Data/Hora', 'Origem', 'Enviado por', 'Modelo', 'CNPJ', 'Loja', 'GN', 'Assunto', 'Para', 'Cc', 'Status', 'Erro'];
+let logRows = [];
+async function loadLogEnvios() {
+  logRows = [];
+  try {
+    const res = await fetch(gvizUrl(LOG_TAB), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
+    if (!LOG_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return;
+    logRows = parseCSVToObjects(csv);
+  } catch (e) { logRows = []; }
+}
+async function loadContatosProblema() {
+  contatosRows = [];
+  try {
+    const res = await fetch(gvizUrl(CONTATOS_TAB), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const csv = await res.text();
+    const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
+    if (!CONTATOS_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return;
+    contatosRows = parseCSVToObjects(csv);
+  } catch (e) { contatosRows = []; }
+}
+function computeWhatsByCnpj() {
+  const m = {};
+  neppoRows.forEach(function (r) {
+    if (!r.match || r.match.tipo !== 'loja' || !r.match.cnpj) return;
+    const w = m[r.match.cnpj] || (m[r.match.cnpj] = { total: 0, lida: 0, recebida: 0, enviada: 0, erro: 0 });
+    w.total++;
+    if (r.status === 'LIDA') w.lida++; else if (r.status === 'RECEBIDA') w.recebida++; else if (r.status === 'ERRO') w.erro++; else w.enviada++;
+  });
+  whatsByCnpj = m;
+}
+
+function appendDisparoCells(tr, row) {
+  const key = cnpjKeyDisparo(row[EXPOSED_HEADERS.indexOf('REV_CNPJ')]);
+  const d = disparosByCnpj[key];
+  const qEmail = d ? Number(d['Qtd envios'] || 0) : 0;
+  const falhas = d ? Number(d['Falhas'] || 0) : 0;
+  const w = whatsByCnpj[key] || null;
+  const qWhats = w ? w.total : 0;
+
+  // Coluna "Disparos": "Avisos: total" e "Whats: N | Email: N" (o detalhe fica na aba Disparos)
+  const tdQtd = document.createElement('td');
+  tdQtd.className = 'col-disp';
+  tdQtd.setAttribute('data-label', DISPARO_HEADERS[0]);
+  function num(n) { const b = document.createElement('b'); b.textContent = String(n); if (!n) b.className = 'disp-zero'; return b; }
+  const l1 = document.createElement('span');
+  l1.className = 'disp-main'; l1.style.display = 'block';
+  l1.appendChild(document.createTextNode('Avisos: ')); l1.appendChild(num(qWhats + qEmail));
+  const l2 = document.createElement('span');
+  l2.className = 'disp-main'; l2.style.display = 'block';
+  l2.appendChild(document.createTextNode('Whats: ')); l2.appendChild(num(qWhats));
+  l2.appendChild(document.createTextNode(' | Email: ')); l2.appendChild(num(qEmail));
+  tdQtd.appendChild(l1); tdQtd.appendChild(l2);
+  tr.appendChild(tdQtd);
+
+  // Colunas de e-mail: "Enviado para" e "Cópia Envio" (separados por ponto e vírgula)
+  const mostra = d && (qEmail > 0 || falhas > 0) && DISPARO_EMAILS_VISIVEL_PARA.indexOf(userRole) !== -1;
+  const semi = function (v) { return String(v || '').split(/\s*[,;]\s*/).filter(Boolean).join(';'); };
+  [[1, 'Para (último envio)'], [2, 'Cc (último envio)']].forEach(function (c) {
+    const td = document.createElement('td');
+    td.className = 'col-disp';
+    td.setAttribute('data-label', DISPARO_HEADERS[c[0]]);
+    td.textContent = mostra && semi(d[c[1]]) ? semi(d[c[1]]) : '—';
+    tr.appendChild(td);
+  });
+}
+
+/* ==================== ABA "DISPAROS" (só ultra): status de todos os envios ==================== */
+const DISPARO_VIEW_HEADERS = ['Canal', 'Status envio', 'Contato', 'Loja', 'GN', 'Mensagem', 'Motivo', 'Data'];
+let disparosViewRows = [];
+
+function fmtDisparoHora(raw, t) {
+  if (t === null || t === undefined) return raw || '';
+  const d = new Date(t), p2 = function (n) { return (n < 10 ? '0' : '') + n; };
+  return p2(d.getUTCDate()) + '/' + p2(d.getUTCMonth() + 1) + '/' + d.getUTCFullYear() + ' ' + p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + ':' + p2(d.getUTCSeconds());
+}
+
+function buildProblemRows() {
+  const rows = [];
+  const mailKey = function (v) { return String(v || '').trim().toLowerCase(); };
+  // E-mails com problema (devolvido / falha), por endereço — o mais recente de cada um
+  const probPorMail = {};
+  contatosRows.forEach(function (c) {
+    const k = mailKey(c['Contato']), t = parseDisparoHora(c['Data']);
+    if (!probPorMail[k] || (t || 0) >= (probPorMail[k].t || 0)) probPorMail[k] = { c: c, t: t, usado: false };
+  });
+  // E-mail: 1 linha por envio do log. O último envio de um endereço com problema herda o status de erro.
+  const ultimoLog = {};
+  logRows.forEach(function (l, i) {
+    const k = mailKey(l['Para']), t = parseDisparoHora(l['Data/Hora']);
+    if (!ultimoLog[k] || (t || 0) >= (ultimoLog[k].t || 0)) ultimoLog[k] = { i: i, t: t };
+  });
+  logRows.forEach(function (l, i) {
+    const k = mailKey(l['Para']), t = parseDisparoHora(l['Data/Hora']);
+    let status = 'E-mail enviado', tipo = 'ok', motivo = l['Modelo'] ? 'Modelo ' + String(l['Modelo']).replace(/^EMAIL/i, '') : '';
+    const pr = probPorMail[k];
+    if (String(l['Status']).toUpperCase() !== 'ENVIADO') { status = 'Falha no envio'; tipo = 'erro'; motivo = l['Erro'] || 'Erro'; if (pr) pr.usado = true; }
+    else if (pr && ultimoLog[k].i === i) { status = pr.c['Problema'] || 'E-mail inválido (devolvido)'; tipo = 'erro'; motivo = pr.c['Motivo'] || ''; pr.usado = true; }
+    rows.push({ canal: 'E-mail', problema: status, tipo: tipo, contato: l['Para'] || '', loja: l['Loja'] || '', gn: l['GN'] || '',
+      msg: l['Modelo'] ? 'E-mail ' + String(l['Modelo']).replace(/^EMAIL/i, '') : '—', motivo: motivo, data: l['Data/Hora'] || '', t: t, ordem: i });
+  });
+  // Contatos com problema sem linha no log (ex.: log antigo) continuam aparecendo
+  Object.keys(probPorMail).forEach(function (k) {
+    const pr = probPorMail[k]; if (pr.usado) return;
+    const c = pr.c;
+    rows.push({ canal: c['Canal'] || 'E-mail', problema: c['Problema'] || 'E-mail com problema', tipo: 'erro', contato: c['Contato'] || '', loja: c['Loja'] || '', gn: c['GN'] || '',
+      msg: '—', motivo: c['Motivo'] || '', data: c['Data'] || '', t: pr.t, ordem: -1 });
+  });
+  // WhatsApp: vale a ÚLTIMA linha de cada número em cada mensagem (se reenviou e foi lida, o erro antigo some)
+  const ult = {};
+  neppoRows.forEach(function (r) {
+    const k = r.msg + '|' + r.num, atual = ult[k];
+    if (!atual || (r.t !== null && atual.t !== null ? r.t >= atual.t : r.ordem >= atual.ordem)) ult[k] = r;
+  });
+  const WS = { ERRO: ['WhatsApp não entregue', 'erro'], ENVIADA: ['WhatsApp sem confirmação', 'aviso'], RECEBIDA: ['WhatsApp recebido', 'ok'], LIDA: ['WhatsApp lido', 'ok'] };
+  Object.keys(ult).forEach(function (k) {
+    const r = ult[k];
+    const st = WS[r.status] || [('WhatsApp ' + (r.status || '').toLowerCase()).trim(), 'aviso'];
+    const m = r.match;
+    rows.push({ canal: 'WhatsApp', problema: st[0], tipo: st[1],
+      contato: formatPhone(r.num) + (r.nome && r.nome.indexOf('whatsapp_') !== 0 ? ' · ' + r.nome : ''),
+      loja: m ? (m.tipo === 'loja' ? m.loja : '(telefone do GN)') : 'Sem loja na base',
+      gn: m ? m.gn : '', msg: r.msg,
+      motivo: r.status === 'ERRO' ? (r.motivo || 'Erro') : r.status === 'ENVIADA' ? 'Enviada, sem confirmação de recebimento' : '',
+      data: fmtDisparoHora(r.hora, r.t), t: r.t, ordem: r.ordem });
+  });
+  rows.sort(function (a, b) { return (b.t || 0) - (a.t || 0) || b.ordem - a.ordem; });
+  return rows;
+}
+
+async function openDisparosView() {
+  const st = document.getElementById('disparos-status-msg');
+  st.textContent = 'Carregando disparos...'; st.className = 'info'; st.style.display = 'block';
+  await Promise.all([loadDisparosResumo(), loadNeppoRetorno(), loadContatosProblema(), loadLogEnvios()]);
+  computeWhatsByCnpj();
+  neppoRows.forEach(function (r) { r.match = phoneIndex[r.num] || null; });
+  disparosViewRows = buildProblemRows();
+  if (neppoAviso) { st.textContent = neppoAviso; st.className = 'error'; st.style.display = 'block'; }
+  else st.style.display = 'none';
+  renderDisparosStats();
+  fillDisparosFilters();
+  renderDisparosTable();
+}
+
+function renderDisparosStats() {
+  const box = document.getElementById('disparos-stats');
+  box.innerHTML = '';
+  function card(extraClass, label, value, pct, chips) {
+    const c = document.createElement('div'); c.className = 'stat-card ' + extraClass;
+    const l = document.createElement('div'); l.className = 'stat-label'; l.textContent = label;
+    const v = document.createElement('div'); v.className = 'stat-value'; v.textContent = value;
+    const p = document.createElement('div'); p.className = 'stat-pct'; p.textContent = pct || '';
+    c.appendChild(l); c.appendChild(v); c.appendChild(p);
+    if (chips && chips.length) {
+      const b = document.createElement('div'); b.className = 'stat-breakdown';
+      chips.forEach(function (t) { const s = document.createElement('span'); s.className = 'stat-chip'; s.textContent = t; b.appendChild(s); });
+      c.appendChild(b);
+    }
+    box.appendChild(c);
+  }
+  // E-mail
+  let enviados = 0, lojasEmail = 0;
+  Object.keys(disparosByCnpj).forEach(function (k) { const q = Number(disparosByCnpj[k]['Qtd envios'] || 0); enviados += q; if (q > 0) lojasEmail++; });
+  const probEmail = contatosRows.length;
+  card('stat-card-usadosbr', 'E-mails enviados', String(enviados), lojasEmail + ' loja(s) atingida(s)',
+    [probEmail + ' com problema (falha ou inválido)']);
+  // WhatsApp
+  const cont = { LIDA: 0, RECEBIDA: 0, ENVIADA: 0, ERRO: 0 };
+  neppoRows.forEach(function (r) { if (cont[r.status] !== undefined) cont[r.status]++; });
+  const totalW = neppoRows.length;
+  const pctErro = totalW ? Math.round(cont.ERRO / totalW * 1000) / 10 : 0;
+  card('stat-card-c6', 'WhatsApp (Neppo)', String(totalW), totalW ? pctErro.toString().replace('.', ',') + '% com erro' : 'Cole o retorno do Neppo na aba Neppo_Retorno',
+    ['Lidas: ' + cont.LIDA, 'Recebidas: ' + cont.RECEBIDA, 'Sem confirmação: ' + cont.ENVIADA, 'Erro: ' + cont.ERRO]);
+  // números sem loja
+  const nums = {}, semLoja = {};
+  neppoRows.forEach(function (r) { nums[r.num] = true; if (!r.match) semLoja[r.num] = true; });
+  const nN = Object.keys(nums).length, nS = Object.keys(semLoja).length;
+  card(nS && nN && nS / nN > 0.2 ? 'stat-card-warn' : '', 'Números sem loja na base', String(nS),
+    nN ? Math.round(nS / nN * 100) + '% dos ' + nN + ' números do Neppo' : '',
+    ['Não batem com Telefone Onboarding nem Telefone GN da Base_lojas']);
+}
+
+function fillDisparosFilters() {
+  function fill(id, values, allLabel) {
+    const el = document.getElementById(id), cur = el.value;
+    el.innerHTML = '';
+    const o0 = document.createElement('option'); o0.value = ''; o0.textContent = allLabel; el.appendChild(o0);
+    Array.from(new Set(values.filter(Boolean))).sort(function (a, b) { return a.localeCompare(b, 'pt-BR'); }).forEach(function (v) {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; el.appendChild(o);
+    });
+    el.value = Array.from(el.options).some(function (o) { return o.value === cur; }) ? cur : '';
+  }
+  fill('disparos-f-canal', disparosViewRows.map(function (r) { return r.canal; }), 'Todos');
+  fill('disparos-f-problema', disparosViewRows.map(function (r) { return r.problema; }), 'Todos');
+  fill('disparos-f-msg', disparosViewRows.map(function (r) { return r.msg; }), 'Todas');
+}
+
+function getDisparosFiltered() {
+  const q = document.getElementById('disparos-search').value.trim().toLowerCase();
+  const canal = document.getElementById('disparos-f-canal').value;
+  const prob = document.getElementById('disparos-f-problema').value;
+  const msg = document.getElementById('disparos-f-msg').value;
+  return disparosViewRows.filter(function (r) {
+    if (canal && r.canal !== canal) return false;
+    if (prob && r.problema !== prob) return false;
+    if (msg && r.msg !== msg) return false;
+    if (q && [r.canal, r.problema, r.contato, r.loja, r.gn, r.msg, r.motivo].join(' ').toLowerCase().indexOf(q) === -1) return false;
+    return true;
+  });
+}
+function disparoRowToCells(r) { return [r.canal, r.problema, r.contato, r.loja, r.gn, r.msg, r.motivo, r.data]; }
+
+function renderDisparosTable() {
+  const head = document.getElementById('disparos-table-head');
+  if (!head.children.length) DISPARO_VIEW_HEADERS.forEach(function (h) { const th = document.createElement('th'); th.textContent = h; head.appendChild(th); });
+  const rows = getDisparosFiltered();
+  const tb = document.getElementById('disparos-table-body');
+  tb.innerHTML = '';
+  rows.forEach(function (r) {
+    const tr = document.createElement('tr');
+    disparoRowToCells(r).forEach(function (c, i) {
+      const td = document.createElement('td');
+      td.setAttribute('data-label', DISPARO_VIEW_HEADERS[i]);
+      if (i === 1) { const b = document.createElement('span'); b.className = 'badge ' + (r.tipo === 'ok' ? 'badge-green' : r.tipo === 'aviso' ? 'badge-gray' : 'badge-red'); b.textContent = c; td.appendChild(b); }
+      else { td.textContent = c; if (i === 2 || i === 3 || i === 6) td.classList.add('col-wrap'); }
+      tr.appendChild(td);
+    });
+    tb.appendChild(tr);
+  });
+  document.getElementById('disparos-results-count').textContent = rows.length + ' de ' + disparosViewRows.length + ' envio(s)';
+}
+
+['disparos-search'].forEach(function (id) { document.getElementById(id).addEventListener('input', renderDisparosTable); });
+['disparos-f-canal', 'disparos-f-problema', 'disparos-f-msg'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderDisparosTable); });
+document.getElementById('disparos-refresh-btn').addEventListener('click', openDisparosView);
+document.getElementById('disparos-download-btn').addEventListener('click', function () {
+  const rows = getDisparosFiltered().map(disparoRowToCells);
+  if (typeof XLSX !== 'undefined') downloadExcel(DISPARO_VIEW_HEADERS, rows, 'disparos_status_envio.xlsx', [2]);
+  else downloadCsv(DISPARO_VIEW_HEADERS, rows, 'disparos_status_envio.csv');
+  showStatus(rows.length + ' contato(s) baixado(s).', 'success');
+  logToBackend('download', 'Disparos - status dos envios (' + rows.length + ')');
+});
+
 /* ==================== DADOS ==================== */
 async function loadData() {
   showStatus('Carregando dados...', 'info');
@@ -1947,6 +2365,10 @@ async function loadData() {
     };
     allRows = allRows.filter(row => hasValue(row[loginIdx]) && hasValue(row[senhaIdx]));
 
+    buildPhoneIndex(objects);
+    await Promise.all([loadDisparosResumo(), loadNeppoRetorno()]);
+    computeWhatsByCnpj();
+
     buildTableHead();
     populateFilterOptions();
     renderTable();
@@ -1966,6 +2388,12 @@ function buildTableHead() {
     const th = document.createElement('th');
     th.textContent = h;
     if (WRAP_COLUMNS.indexOf(h) !== -1) th.classList.add('col-wrap');
+    tr.appendChild(th);
+  });
+  DISPARO_HEADERS.forEach(function (h) {
+    const th = document.createElement('th');
+    th.textContent = h;
+    th.classList.add('col-disp');
     tr.appendChild(th);
   });
 }
@@ -2123,6 +2551,7 @@ function renderTable() {
       }
       tr.appendChild(td);
     });
+    appendDisparoCells(tr, row);
     tbody.appendChild(tr);
   });
 
