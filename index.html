@@ -1115,8 +1115,19 @@ function clearSession() {
 }
 
 /* ==================== GVIZ (leitura pública da planilha) ==================== */
-function gvizUrl(tab) {
-  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`;
+// comHeader: abas só com texto (ex.: log de e-mails) fazem o Google não reconhecer a 1ª linha como cabeçalho;
+// headers=1 força a 1ª linha a ser o cabeçalho.
+function gvizUrl(tab, comHeader) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}` + (comHeader ? '&headers=1' : '');
+}
+
+// Se o Google não reconheceu o cabeçalho (aba só com texto), a 1ª linha vem com rótulos vazios: descarta essa linha.
+function normalizaCsvGviz(csv) {
+  const t = String(csv).replace(/\r\n/g, '\n');
+  const i = t.indexOf('\n');
+  const l0 = i === -1 ? t : t.slice(0, i);
+  if (l0 && !l0.replace(/[",\s]/g, '')) return t.slice(i + 1);
+  return t;
 }
 
 function splitCSVLine(line) {
@@ -2091,9 +2102,9 @@ function matchWhatsRow(r) { return (r.cnpj && cnpjIndex[r.cnpj]) || phoneIndex[r
 async function loadNeppoRetorno() {
   neppoRows = []; neppoAviso = '';
   try {
-    const res = await fetch(gvizUrl(NEPPO_TAB), { cache: 'no-store' });
+    const res = await fetch(gvizUrl(NEPPO_TAB, true), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
+    const csv = normalizaCsvGviz(await res.text());
     const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
     if (!NEPPO_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return; // aba ainda não existe
     const seen = {}; let sci = 0;
@@ -2122,9 +2133,9 @@ let logRows = [];
 async function loadLogEnvios() {
   logRows = [];
   try {
-    const res = await fetch(gvizUrl(LOG_TAB), { cache: 'no-store' });
+    const res = await fetch(gvizUrl(LOG_TAB, true), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
+    const csv = normalizaCsvGviz(await res.text());
     const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
     if (!LOG_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return;
     logRows = parseCSVToObjects(csv);
@@ -2133,9 +2144,9 @@ async function loadLogEnvios() {
 async function loadContatosProblema() {
   contatosRows = [];
   try {
-    const res = await fetch(gvizUrl(CONTATOS_TAB), { cache: 'no-store' });
+    const res = await fetch(gvizUrl(CONTATOS_TAB, true), { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
+    const csv = normalizaCsvGviz(await res.text());
     const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
     if (!CONTATOS_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return;
     contatosRows = parseCSVToObjects(csv);
