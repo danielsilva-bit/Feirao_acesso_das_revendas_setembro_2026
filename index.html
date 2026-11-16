@@ -848,7 +848,7 @@
       naquele dia em vez da estimativa.
     </p>
     <div class="charts-grid">
-      <div class="chart-box chart-box-wide"><canvas id="chart-evolucao-linha"></canvas></div>
+      <div class="chart-box chart-box-wide" style="height:460px"><canvas id="chart-evolucao-linha"></canvas></div>
     </div>
 
     <div class="charts-heading">Com Estoque x Sem Estoque por dia</div>
@@ -1850,8 +1850,9 @@ function renderEvolucaoLinha(evolucao) {
           tension: 0.2,
           fill: false,
           datalabels: {
-            anchor: 'end', align: 'bottom', offset: 4,
-            color: '#14151A',
+            anchor: 'end', offset: 6, clamp: true,
+            align: function (c) { return comEstoqueData[c.dataIndex] >= semEstoqueData[c.dataIndex] ? 'top' : 'bottom'; },
+            color: '#14151A', backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 4, padding: { top: 1, bottom: 1, left: 3, right: 3 },
             font: { family: 'Inter', size: 11, weight: '600' }
           }
         },
@@ -1866,8 +1867,9 @@ function renderEvolucaoLinha(evolucao) {
           tension: 0.2,
           fill: false,
           datalabels: {
-            anchor: 'end', align: 'top', offset: 4,
-            color: '#14151A',
+            anchor: 'end', offset: 6, clamp: true,
+            align: function (c) { return semEstoqueData[c.dataIndex] > comEstoqueData[c.dataIndex] ? 'top' : 'bottom'; },
+            color: '#14151A', backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 4, padding: { top: 1, bottom: 1, left: 3, right: 3 },
             font: { family: 'Inter', size: 11, weight: '600' }
           }
         },
@@ -1882,8 +1884,8 @@ function renderEvolucaoLinha(evolucao) {
           tension: 0.2,
           fill: false,
           datalabels: {
-            anchor: 'end', align: 'top', offset: 6,
-            color: '#6C4AB6',
+            anchor: 'end', align: 'top', offset: 6, clamp: true,
+            color: '#6C4AB6', backgroundColor: 'rgba(255,255,255,0.88)', borderRadius: 4, padding: { top: 1, bottom: 1, left: 3, right: 3 },
             font: { family: 'Inter', size: 10, weight: '600' },
             formatter: function (value) { return value === null ? '' : (value > 0 ? '+' + value : value); }
           }
@@ -1893,9 +1895,9 @@ function renderEvolucaoLinha(evolucao) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 16 } },
+      layout: { padding: { top: 22, bottom: 6, left: 6, right: 6 } },
       scales: {
-        x: { grid: { display: false } },
+        x: { offset: true, grid: { display: false } },
         y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
       },
       plugins: {
