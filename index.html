@@ -484,6 +484,7 @@
   /* Colunas de disparo de e-mail (Disparos / Enviado para) */
   .col-disp { white-space: normal; word-break: break-word; min-width: 190px; max-width: 290px; }
   .disp-main b { font-weight: 700; }
+  .disp-cs { background: rgba(255, 193, 7, 0.22); box-shadow: inset 3px 0 0 #E0A800; }
   .disp-main b.disp-zero { font-weight: 400; color: var(--muted); }
   .disp-sub { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 3px; white-space: normal; word-break: break-word; }
   @media (max-width: 720px) { .col-disp { max-width: none; min-width: 0; } }
@@ -815,7 +816,7 @@
       </div>
     </div>
 
-    <div class="charts-heading">Resumo dos disparos (e-mail pelo script, WhatsApp pelo retorno do Neppo colado na planilha)</div>
+    <div class="charts-heading">Resumo dos disparos (e-mail pelo script, WhatsApp pela aba Disparos_Whatsapp)</div>
     <div class="stats-grid" id="disparos-stats"></div>
 
     <div class="charts-heading">Status dos envios — e-mail e WhatsApp (com e sem erro; corrija os que falharam e dispare de novo)</div>
@@ -914,12 +915,19 @@ const DISPARO_MODELO_LABEL = {
 let disparosByCnpj = {};
 // Retorno do Neppo (WhatsApp): o Daniel COLA o export do Neppo na aba Neppo_Retorno (colunas do export
 // + "Mensagem": Msg1/Msg2/Msg3). O Dash casa o número com o telefone da loja (Telefone Onboarding) ou do GN.
-const NEPPO_TAB = 'Neppo_Retorno';
-const NEPPO_EXPECTED_HEADERS = ['Nome do Contato', 'Número', 'Status', 'Hora Envio'];
+// (Dezembro) O WhatsApp agora vem da aba Disparos_Whatsapp, preenchida à mão: Nome, CNPJ, Telefone, Mensagem (Msg1/Msg2/Msg3), Data, Status.
+const NEPPO_TAB = 'Disparos_Whatsapp';
+const NEPPO_EXPECTED_HEADERS = ['Nome', 'CNPJ', 'Telefone', 'Mensagem'];
+// Status digitado na aba -> status interno. Enviado/Entregue/Lido contam como "chegou"; Recusado/Falha são erro; vazio = sem status.
+const WHATS_STATUS_MAP = { ENVIADO: 'ENVIADA', ENVIADA: 'ENVIADA', SENT: 'ENVIADA', ENTREGUE: 'RECEBIDA', DELIVERED: 'RECEBIDA', RECEBIDO: 'RECEBIDA', RECEBIDA: 'RECEBIDA',
+  LIDO: 'LIDA', LIDA: 'LIDA', READ: 'LIDA', RECUSADO: 'ERRO', FALHA: 'ERRO', ERRO: 'ERRO', FAILED: 'ERRO' };
+// Quem vê o destaque (CS): loja que NUNCA teve um WhatsApp enviado/entregue/lido fica com a célula "Disparos" destacada.
+const DISPARO_DESTAQUE_CS_PARA = ['ultra'];
+const DISPARO_DESTACAR_SEM_REGISTRO = true;   // true: loja sem nenhuma linha em Disparos_Whatsapp também é destacada
 // Aba gerada pelo script de disparos: e-mails com falha de envio ou devolvidos (inválidos)
 const CONTATOS_TAB = 'Disparos_Contatos';
 const CONTATOS_EXPECTED_HEADERS = ['Canal', 'Problema', 'Contato', 'CNPJ'];
-let neppoRows = [], neppoAviso = '', contatosRows = [], phoneIndex = {}, whatsByCnpj = {};
+let neppoRows = [], neppoAviso = '', contatosRows = [], phoneIndex = {}, cnpjIndex = {}, whatsByCnpj = {};
 const LOG_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbzfCZ0o2euEGjE9PbKdHIYMAKdYYWm8IluHGYnkDrrWztMGSs8-XkhvL0_1ytoZNQJpAg/exec';
 
 // Colunas exibidas, na ordem pedida: A,B,C,D,E,G,H,J,K,L,M,N,O,P(Comercial)
@@ -1488,6 +1496,9 @@ document.getElementById('ranking-download-btn').addEventListener('click', functi
 // 07/09/2026: último dia SEM acompanhamento manual nem cálculo automático —
 // tudo antes dele (inclusive) vira o ponto de partida único do gráfico.
 const EVOLUCAO_BASELINE_DATE = new Date(2026, 8, 7);
+// Feirão de Dezembro: os gráficos da Evolução mostram só os dias a partir de 09/11/2026 (a comparação é a de novembro, até dezembro).
+// Os dias anteriores continuam na aba Historico_Estoque, mas não entram nos gráficos.
+const EVOLUCAO_A_PARTIR_DE = new Date(2026, 10, 9);
 // Contagem de lojas SEM estoque, acompanhada manualmente pelo usuário.
 const EVOLUCAO_MANUAL_SEM_ESTOQUE = [
   { date: new Date(2026, 8, 8), semEstoque: 544 },
@@ -1789,10 +1800,22 @@ function applyHistoricoOverlay(evolucao, overlayMap) {
   return { totalLojas: evolucao.totalLojas, days: days };
 }
 
+// Recorta a série a partir de EVOLUCAO_A_PARTIR_DE e refaz a "diferença para o dia anterior" dentro do recorte
+// (o primeiro dia do recorte não tem dia anterior para comparar).
+function limitarEvolucaoAPartirDe(evolucao, desde) {
+  const days = evolucao.days.filter(function (d) { return d.date.getTime() >= desde.getTime(); });
+  let prev = null;
+  days.forEach(function (d) {
+    d.subiu = prev === null ? null : Math.max(0, prev - d.semEstoque);
+    prev = d.semEstoque;
+  });
+  return { totalLojas: evolucao.totalLojas, days: days };
+}
+
 async function renderEvolucaoEstoque() {
   const evolucaoBase = computeEvolucaoEstoque(allRows);
   const overlay = await loadHistoricoEstoqueOverlay();
-  const evolucao = applyHistoricoOverlay(evolucaoBase, overlay);
+  const evolucao = limitarEvolucaoAPartirDe(applyHistoricoOverlay(evolucaoBase, overlay), EVOLUCAO_A_PARTIR_DE);
 
   renderEvolucaoLinha(evolucao);
   renderEvolucaoDiario(evolucao);
@@ -1987,21 +2010,23 @@ function logToBackend(action, detalhe) {
 /* ==================== DISPAROS DE E-MAIL (aba Disparos_Resumo) ==================== */
 function cnpjKeyDisparo(v) { return String(v || '').replace(/\D/g, '').replace(/^0+/, ''); }
 
+// (Dezembro) Não existe mais a aba Disparos_Resumo: a contagem por loja sai direto do log Disparos_realizados_email
+// (1 linha por e-mail; Status ENVIADO conta como enviado, FALHA conta como falha).
 async function loadDisparosResumo() {
   disparosByCnpj = {};
-  try {
-    const res = await fetch(gvizUrl(DISPARO_TAB), { cache: 'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
-    const first = splitCSVLine(csv.replace(/\r\n/g, '\n').split('\n')[0]).map(function (h) { return h.trim(); });
-    if (!DISPARO_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return; // aba ainda não existe
-    const map = {};
-    parseCSVToObjects(csv).forEach(function (o) {
-      const k = cnpjKeyDisparo(o['CNPJ']);
-      if (k) map[k] = o;
-    });
-    disparosByCnpj = map;
-  } catch (e) { disparosByCnpj = {}; }
+  await loadLogEnvios();
+  const m = {};
+  logRows.forEach(function (l) {
+    const k = cnpjKeyDisparo(l['CNPJ']);
+    if (!k) return;
+    const d = m[k] || (m[k] = { 'CNPJ': k, 'Qtd envios': 0, 'Falhas': 0, 'Para (último envio)': '', 'Cc (último envio)': '', _t: -1 });
+    if (String(l['Status']).toUpperCase() === 'ENVIADO') {
+      d['Qtd envios']++;
+      const t = parseDisparoHora(l['Data/Hora']) || 0;
+      if (t >= d._t) { d._t = t; d['Para (último envio)'] = l['Para'] || ''; d['Cc (último envio)'] = l['Cc'] || ''; }
+    } else d['Falhas']++;
+  });
+  disparosByCnpj = m;
 }
 
 // "13/11/2026 09:00:05" -> "13/11 09:00"
@@ -2052,7 +2077,15 @@ function buildPhoneIndex(objects) {
     if (g && !idx[g]) idx[g] = { tipo: 'gn', cnpj: '', loja: '', gn: o['GN_NOME'] || '' };
   });
   phoneIndex = idx;
+  const ci = {};
+  objects.forEach(function (o) {
+    const k = cnpjKeyDisparo(o['REV_CNPJ']);
+    if (k && !ci[k]) ci[k] = { tipo: 'loja', cnpj: k, loja: o['REV_NOME'] || '', gn: o['GN_NOME'] || '' };
+  });
+  cnpjIndex = ci;
 }
+// Casa uma linha de WhatsApp com a loja: primeiro pelo CNPJ, depois pelo telefone.
+function matchWhatsRow(r) { return (r.cnpj && cnpjIndex[r.cnpj]) || phoneIndex[r.num] || null; }
 async function loadNeppoRetorno() {
   neppoRows = []; neppoAviso = '';
   try {
@@ -2063,21 +2096,25 @@ async function loadNeppoRetorno() {
     if (!NEPPO_EXPECTED_HEADERS.every(function (h, i) { return first[i] === h; })) return; // aba ainda não existe
     const seen = {}; let sci = 0;
     parseCSVToObjects(csv).forEach(function (o, i) {
-      const raw = String(o['Número'] || '').trim();
-      if (!raw) return;
-      if (/e\+/i.test(raw)) { sci++; return; }
-      const num = normPhone(raw), hora = o['Hora Envio'] || '', msg = (o['Mensagem'] || '').trim() || '—';
-      const status = String(o['Status'] || '').trim().toUpperCase();
-      const key = [msg, num, hora, status].join('|');
-      if (seen[key]) return;   // mesma linha colada duas vezes
+      const rawTel = String(o['Telefone'] || '').trim(), rawCnpj = String(o['CNPJ'] || '').trim();
+      if (!rawTel && !rawCnpj) return;
+      if (/e\+/i.test(rawTel) || /e\+/i.test(rawCnpj)) { sci++; return; }
+      const num = rawTel ? normPhone(rawTel) : '', cnpj = cnpjKeyDisparo(rawCnpj);
+      const hora = o['Data'] || '', msg = (o['Mensagem'] || '').trim() || '—';
+      const rawSt = String(o['Status'] || '').trim();
+      const status = rawSt ? (WHATS_STATUS_MAP[rawSt.toUpperCase()] || 'PENDENTE') : 'PENDENTE';
+      const key = [msg, num, cnpj, hora, status].join('|');
+      if (seen[key]) return;   // mesma linha digitada duas vezes
       seen[key] = true;
-      neppoRows.push({ ordem: i, nome: o['Nome do Contato'] || '', num: num, status: status, hora: hora, t: parseDisparoHora(hora),
-        motivo: motivoNeppo(o['Motivo da Falha']), msg: msg, match: phoneIndex[num] || null });
+      const r = { ordem: i, nome: o['Nome'] || '', num: num, cnpj: cnpj, status: status, hora: hora, t: parseDisparoHora(hora),
+        motivo: status === 'ERRO' ? rawSt : '', msg: msg, match: null };
+      r.match = matchWhatsRow(r);
+      neppoRows.push(r);
     });
-    if (sci) neppoAviso = sci + ' linha(s) com o Número em notação científica (ex.: 5,5E+12) foram ignoradas — na aba Neppo_Retorno, formate a coluna B como "Texto simples" e cole de novo.';
+    if (sci) neppoAviso = sci + ' linha(s) com Telefone/CNPJ em notação científica (ex.: 5,5E+12) foram ignoradas — na aba Disparos_Whatsapp, formate as colunas B e C como "Texto simples" e digite de novo.';
   } catch (e) { neppoRows = []; }
 }
-const LOG_TAB = 'Disparos';
+const LOG_TAB = 'Disparos_realizados_email';
 const LOG_EXPECTED_HEADERS = ['Dia', 'Data/Hora', 'Origem', 'Enviado por', 'Modelo', 'CNPJ', 'Loja', 'GN', 'Assunto', 'Para', 'Cc', 'Status', 'Erro'];
 let logRows = [];
 async function loadLogEnvios() {
@@ -2106,9 +2143,9 @@ function computeWhatsByCnpj() {
   const m = {};
   neppoRows.forEach(function (r) {
     if (!r.match || r.match.tipo !== 'loja' || !r.match.cnpj) return;
-    const w = m[r.match.cnpj] || (m[r.match.cnpj] = { total: 0, lida: 0, recebida: 0, enviada: 0, erro: 0 });
+    const w = m[r.match.cnpj] || (m[r.match.cnpj] = { total: 0, lida: 0, recebida: 0, enviada: 0, erro: 0, pendente: 0 });
     w.total++;
-    if (r.status === 'LIDA') w.lida++; else if (r.status === 'RECEBIDA') w.recebida++; else if (r.status === 'ERRO') w.erro++; else w.enviada++;
+    if (r.status === 'LIDA') w.lida++; else if (r.status === 'RECEBIDA') w.recebida++; else if (r.status === 'ERRO') w.erro++; else if (r.status === 'PENDENTE') w.pendente++; else w.enviada++;
   });
   whatsByCnpj = m;
 }
@@ -2134,6 +2171,12 @@ function appendDisparoCells(tr, row) {
   l2.appendChild(document.createTextNode('Whats: ')); l2.appendChild(num(qWhats));
   l2.appendChild(document.createTextNode(' | Email: ')); l2.appendChild(num(qEmail));
   tdQtd.appendChild(l1); tdQtd.appendChild(l2);
+  // Destaque para o CS: a loja nunca teve um WhatsApp enviado/entregue/lido (Disparos_Whatsapp)
+  const chegou = w ? (w.lida + w.recebida + w.enviada) > 0 : false;
+  if (DISPARO_DESTAQUE_CS_PARA.indexOf(userRole) !== -1 && !chegou && (w || DISPARO_DESTACAR_SEM_REGISTRO)) {
+    tdQtd.classList.add('disp-cs');
+    tdQtd.title = w ? 'CS: nenhum WhatsApp enviado/entregue para esta loja' : 'CS: nenhum WhatsApp registrado para esta loja';
+  }
   tr.appendChild(tdQtd);
 
   // Colunas de e-mail: "Enviado para" e "Cópia Envio" (separados por ponto e vírgula)
@@ -2192,19 +2235,19 @@ function buildProblemRows() {
   // WhatsApp: vale a ÚLTIMA linha de cada número em cada mensagem (se reenviou e foi lida, o erro antigo some)
   const ult = {};
   neppoRows.forEach(function (r) {
-    const k = r.msg + '|' + r.num, atual = ult[k];
+    const k = r.msg + '|' + (r.num || r.cnpj), atual = ult[k];
     if (!atual || (r.t !== null && atual.t !== null ? r.t >= atual.t : r.ordem >= atual.ordem)) ult[k] = r;
   });
-  const WS = { ERRO: ['WhatsApp não entregue', 'erro'], ENVIADA: ['WhatsApp sem confirmação', 'aviso'], RECEBIDA: ['WhatsApp recebido', 'ok'], LIDA: ['WhatsApp lido', 'ok'] };
+  const WS = { ERRO: ['WhatsApp recusado/falha', 'erro'], ENVIADA: ['WhatsApp enviado', 'ok'], RECEBIDA: ['WhatsApp entregue', 'ok'], LIDA: ['WhatsApp lido', 'ok'], PENDENTE: ['WhatsApp sem status', 'aviso'] };
   Object.keys(ult).forEach(function (k) {
     const r = ult[k];
     const st = WS[r.status] || [('WhatsApp ' + (r.status || '').toLowerCase()).trim(), 'aviso'];
     const m = r.match;
     rows.push({ canal: 'WhatsApp', problema: st[0], tipo: st[1],
-      contato: formatPhone(r.num) + (r.nome && r.nome.indexOf('whatsapp_') !== 0 ? ' · ' + r.nome : ''),
+      contato: (formatPhone(r.num) || r.cnpj || '') + (r.nome && r.nome.indexOf('whatsapp_') !== 0 ? ' · ' + r.nome : ''),
       loja: m ? (m.tipo === 'loja' ? m.loja : '(telefone do GN)') : 'Sem loja na base',
       gn: m ? m.gn : '', msg: r.msg,
-      motivo: r.status === 'ERRO' ? (r.motivo || 'Erro') : r.status === 'ENVIADA' ? 'Enviada, sem confirmação de recebimento' : '',
+      motivo: r.status === 'ERRO' ? (r.motivo || 'Erro') : r.status === 'PENDENTE' ? 'Status ainda não preenchido na aba Disparos_Whatsapp' : '',
       data: fmtDisparoHora(r.hora, r.t), t: r.t, ordem: r.ordem });
   });
   rows.sort(function (a, b) { return (b.t || 0) - (a.t || 0) || b.ordem - a.ordem; });
@@ -2214,9 +2257,9 @@ function buildProblemRows() {
 async function openDisparosView() {
   const st = document.getElementById('disparos-status-msg');
   st.textContent = 'Carregando disparos...'; st.className = 'info'; st.style.display = 'block';
-  await Promise.all([loadDisparosResumo(), loadNeppoRetorno(), loadContatosProblema(), loadLogEnvios()]);
+  await Promise.all([loadDisparosResumo(), loadNeppoRetorno(), loadContatosProblema()]);
   computeWhatsByCnpj();
-  neppoRows.forEach(function (r) { r.match = phoneIndex[r.num] || null; });
+  neppoRows.forEach(function (r) { r.match = matchWhatsRow(r); });
   disparosViewRows = buildProblemRows();
   if (neppoAviso) { st.textContent = neppoAviso; st.className = 'error'; st.style.display = 'block'; }
   else st.style.display = 'none';
@@ -2252,15 +2295,15 @@ function renderDisparosStats() {
   neppoRows.forEach(function (r) { if (cont[r.status] !== undefined) cont[r.status]++; });
   const totalW = neppoRows.length;
   const pctErro = totalW ? Math.round(cont.ERRO / totalW * 1000) / 10 : 0;
-  card('stat-card-c6', 'WhatsApp (Neppo)', String(totalW), totalW ? pctErro.toString().replace('.', ',') + '% com erro' : 'Cole o retorno do Neppo na aba Neppo_Retorno',
-    ['Lidas: ' + cont.LIDA, 'Recebidas: ' + cont.RECEBIDA, 'Sem confirmação: ' + cont.ENVIADA, 'Erro: ' + cont.ERRO]);
+  card('stat-card-c6', 'WhatsApp', String(totalW), totalW ? pctErro.toString().replace('.', ',') + '% com erro' : 'Preencha a aba Disparos_Whatsapp',
+    ['Lidas: ' + cont.LIDA, 'Entregues: ' + cont.RECEBIDA, 'Enviadas: ' + cont.ENVIADA, 'Recusados/falhas: ' + cont.ERRO]);
   // números sem loja
   const nums = {}, semLoja = {};
-  neppoRows.forEach(function (r) { nums[r.num] = true; if (!r.match) semLoja[r.num] = true; });
+  neppoRows.forEach(function (r) { const kk = r.num || r.cnpj; nums[kk] = true; if (!r.match) semLoja[kk] = true; });
   const nN = Object.keys(nums).length, nS = Object.keys(semLoja).length;
-  card(nS && nN && nS / nN > 0.2 ? 'stat-card-warn' : '', 'Números sem loja na base', String(nS),
-    nN ? Math.round(nS / nN * 100) + '% dos ' + nN + ' números do Neppo' : '',
-    ['Não batem com Telefone Onboarding nem Telefone GN da Base_lojas']);
+  card(nS && nN && nS / nN > 0.2 ? 'stat-card-warn' : '', 'Contatos sem loja na base', String(nS),
+    nN ? Math.round(nS / nN * 100) + '% dos ' + nN + ' contatos de WhatsApp' : '',
+    ['CNPJ ou telefone não encontrados na Base_lojas']);
 }
 
 function fillDisparosFilters() {
