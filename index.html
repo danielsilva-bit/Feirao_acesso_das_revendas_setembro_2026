@@ -709,6 +709,75 @@
     table.tree td::before { content: none; }
     table.tree td.num { text-align: right; }
   }
+
+  /* ==================== LAYOUT NOVO (17/11/2026): menu lateral + visual arredondado ==================== */
+  :root { --bg: #F2F4F8; --radius: 18px; --shadow: 0 4px 18px rgba(20,21,26,.06); }
+  body.logado { padding-left: 252px; }
+  body.logado header {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 252px; z-index: 50;
+    flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start;
+    padding: 24px 16px 18px; gap: 22px; overflow-y: auto;
+    background: linear-gradient(180deg, #0B0C10 0%, #161A24 100%);
+  }
+  body.logado header h1 { font-size: 16px; line-height: 1.3; }
+  body.logado #view-tabs { flex-direction: column; gap: 4px; }
+  body.logado .view-tab {
+    display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+    border: none; border-radius: 12px; padding: 10px 12px; font-size: 13.5px; color: #AEB4BF; background: transparent;
+  }
+  body.logado .view-tab .ico { width: 20px; text-align: center; font-size: 15px; flex: none; }
+  body.logado .view-tab:hover { background: rgba(255,255,255,.06); color: #fff; }
+  body.logado .view-tab.active { background: rgba(255,255,255,.1); color: #fff; box-shadow: inset 3px 0 0 var(--gold); }
+  body.logado #user-box {
+    margin-top: auto; flex-direction: column; align-items: stretch; gap: 10px;
+    padding: 12px; border-radius: 14px; background: rgba(255,255,255,.05); font-size: 11.5px;
+  }
+  body.logado #user-box span { word-break: break-all; line-height: 1.5; }
+  body.logado #user-box button { border-radius: 10px; }
+  #page-head { display: none; }
+  body.logado #page-head { display: flex; align-items: baseline; gap: 12px; margin: 2px 0 16px; }
+  #page-title { font-family: 'Space Grotesk', sans-serif; font-size: 24px; margin: 0; letter-spacing: -.01em; }
+  #page-sub { color: var(--muted); font-size: 13px; }
+  main { max-width: 1440px; }
+
+  /* cantos arredondados e sombras suaves */
+  .toolbar, .table-wrap, .tree-wrap, .chart-box, .atu-chart-box, .stat-card, #login-screen { border-radius: var(--radius); box-shadow: var(--shadow); border-color: #E6E9EF; }
+  .modal { border-radius: 20px; }
+  .btn { border-radius: 10px; }
+  .field input, .field select, .msel-btn, .field textarea { border-radius: 10px; }
+  .icon-btn { border-radius: 10px; }
+  .badge { border-radius: 999px; }
+  thead th { background: #F4F6FA; color: var(--muted); border-bottom: 1px solid #E6E9EF; }
+  .table-wrap tbody tr:last-child td { border-bottom: none; }
+  .tree tr.gp td:first-child { border-top-left-radius: 0; }
+  #status-msg, #logs-status-msg, .evolucao-nota { border-radius: 14px; }
+
+  @media (max-width: 900px) {
+    body.logado { padding-left: 0; }
+    body.logado header { position: static; width: auto; padding: 16px; gap: 12px; }
+    body.logado #view-tabs { flex-direction: row; overflow-x: auto; }
+    body.logado .view-tab { width: auto; white-space: nowrap; }
+    body.logado #user-box { flex-direction: row; align-items: center; justify-content: space-between; }
+  }
+
+  /* ==================== REGISTRAR ATUAÇÃO (atuação feita fora do Dash) ==================== */
+  #registro-view { display: none; }
+  .reg-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { .reg-grid { grid-template-columns: 1fr; } }
+  .reg-card { background: #fff; border: 1px solid #E6E9EF; border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .reg-card h3 { margin: 0 0 14px; font-family: 'Space Grotesk', sans-serif; font-size: 16px; }
+  .reg-card .field { margin-bottom: 12px; }
+  .reg-card .field input, .reg-card .field select, .reg-card .field textarea { width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--border); font-size: 13px; font-family: 'Inter', sans-serif; background: #fff; }
+  .reg-card textarea { min-height: 90px; resize: vertical; }
+  .reg-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .reg-loja { border: 1px dashed var(--border); border-radius: 14px; padding: 12px 14px; margin: 2px 0 14px; font-size: 13px; color: var(--muted); }
+  .reg-loja.ok { border-style: solid; background: #FAFBFC; color: var(--ink); }
+  .reg-loja .linha { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 6px; }
+  .chips-motivo { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .chip-motivo { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 7px 12px; font-size: 12.5px; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .chip-motivo:hover { background: var(--gray-bg); }
+  .chip-motivo.on { background: var(--steel); color: #fff; border-color: var(--steel); }
+  .reg-erro { color: var(--danger); font-weight: 600; font-size: 13px; min-height: 18px; margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -719,12 +788,13 @@
     <h1>Feirão Dezembro 2026 — Lojas com estoque desatualizado</h1>
   </div>
   <nav id="view-tabs">
-    <button class="view-tab active" id="tab-lojas" type="button">Lojas</button>
-    <button class="view-tab" id="tab-logs" type="button">Logs de Acesso</button>
-    <button class="view-tab" id="tab-ranking" type="button">Ranking GN Sem Estoque</button>
-    <button class="view-tab" id="tab-evolucao" type="button">Evolução do Estoque</button>
-    <button class="view-tab" id="tab-disparos" type="button">Disparos</button>
-    <button class="view-tab" id="tab-atuacao" type="button" style="display:none">Atuação x Estoque</button>
+    <button class="view-tab active" id="tab-lojas" type="button"><span class="ico">🏪</span>Lojas</button>
+    <button class="view-tab" id="tab-ranking" type="button"><span class="ico">🏆</span>Ranking GN Sem Estoque</button>
+    <button class="view-tab" id="tab-registro" type="button" style="display:none"><span class="ico">📝</span>Registrar atuação</button>
+    <button class="view-tab" id="tab-atuacao" type="button" style="display:none"><span class="ico">🎯</span>Atuação x Estoque</button>
+    <button class="view-tab" id="tab-evolucao" type="button"><span class="ico">📈</span>Evolução do Estoque</button>
+    <button class="view-tab" id="tab-disparos" type="button"><span class="ico">✉️</span>Disparos</button>
+    <button class="view-tab" id="tab-logs" type="button"><span class="ico">🕑</span>Logs de Acesso</button>
   </nav>
   <div id="user-box" style="display:none;">
     <span>Logado como <b id="user-email"></b></span>
@@ -744,6 +814,7 @@
     <div id="login-status"></div>
   </div>
 
+  <div id="page-head"><h2 id="page-title">Lojas</h2><span id="page-sub"></span></div>
   <div id="status-msg"></div>
 
   <div id="filters-bar" class="toolbar">
@@ -894,6 +965,43 @@
     </div>
   </div>
 
+  <div id="registro-view">
+    <div class="reg-grid">
+      <div class="reg-card">
+        <h3>Registrar atuação feita fora do Dash</h3>
+        <div class="reg-2">
+          <div class="field"><label>Nome da loja</label><input type="text" id="reg-nome" list="reg-lista-nomes" placeholder="Comece a digitar..." autocomplete="off"></div>
+          <div class="field"><label>CNPJ</label><input type="text" id="reg-cnpj" list="reg-lista-cnpjs" placeholder="Só números" autocomplete="off"></div>
+        </div>
+        <datalist id="reg-lista-nomes"></datalist>
+        <datalist id="reg-lista-cnpjs"></datalist>
+        <div class="reg-loja" id="reg-loja">Escolha a loja pelo nome ou pelo CNPJ — um preenche o outro.</div>
+        <div class="field"><label>Motivo</label></div>
+        <div class="chips-motivo" id="reg-motivos"></div>
+        <div class="reg-2">
+          <div class="field"><label>Canal</label>
+            <select id="reg-canal"><option>WhatsApp</option><option>Ligação</option><option>E-mail</option><option>Reunião / visita</option><option>Outro</option></select></div>
+          <div class="field"><label>Resultado</label>
+            <select id="reg-resultado"><option>Resolvido</option><option>Em andamento</option><option>Sem retorno da loja</option><option>Encaminhado para outra área</option></select></div>
+        </div>
+        <div class="field"><label>Observação</label><textarea id="reg-obs" placeholder="Ex.: integrador da loja estava com token vencido, reenviei o acesso e acompanhei a primeira carga."></textarea></div>
+        <div class="reg-erro" id="reg-erro"></div>
+        <div class="actions" style="margin-left:0">
+          <button class="btn btn-secondary" id="reg-limpar">Limpar</button>
+          <button class="btn btn-steel" id="reg-salvar">Registrar atuação</button>
+        </div>
+      </div>
+      <div class="reg-card">
+        <h3 id="reg-hist-titulo">Últimas atuações registradas</h3>
+        <div class="field" style="max-width:260px"><label>Mostrar</label>
+          <select id="reg-hist-filtro"><option value="minhas">Só as minhas</option><option value="loja">Desta loja</option><option value="todas">Todas</option></select></div>
+        <div class="tree-wrap" style="box-shadow:none">
+          <table class="tree"><thead><tr><th>Quando</th><th>Loja</th><th>Motivo</th><th>Quem</th></tr></thead><tbody id="reg-hist"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="atuacao-view">
     <div class="toolbar">
       <div class="field"><label>De</label><input type="date" id="at-de"></div>
@@ -908,7 +1016,7 @@
     <div id="atuacao-status-msg" class="evolucao-nota" style="display:none"></div>
     <p class="evolucao-nota">
       <b>O que conta como atuação:</b> cada ação feita pelo Dash numa loja ou na carteira de um GN — copiar mensagem/acessos,
-      imagem, WhatsApp, telefone, e-mail (individual ou em lote), resetar senha. Abrir o Dash e usar filtro <b>não</b> contam.
+      imagem, WhatsApp, telefone, e-mail (individual ou em lote), resetar senha — e as atuações feitas por fora, registradas em <b>Registrar atuação</b>. Abrir o Dash e usar filtro <b>não</b> contam.
       Uma loja <b>subiu após atuação</b> quando estava sem estoque (ou desatualizada) na hora da ação e hoje está com estoque
       (ou em dia), com a Última Atualização dentro da janela escolhida. É correlação, não prova de causa.
     </p>
@@ -977,20 +1085,7 @@
     <div id="evolucao-status-msg"></div>
 
     <div class="charts-heading">Evolução do Estoque (total de lojas, não segue os filtros de GP/GN)</div>
-    <p class="evolucao-nota">
-      Antes de 08/09/2026 não temos acompanhamento dia a dia, então esse período inteiro entra como um
-      único ponto de partida ("07/09 e antes"), usando o valor de 08/09 como referência. De 08 a
-      10/09/2026 usamos os números que você acompanhou manualmente. <b>O dia de hoje sempre mostra a
-      contagem real e ao vivo</b> (a mesma da tela de Lojas) — nunca uma estimativa. Só os dias sem
-      nenhum dado próprio, entre o último número conhecido e hoje, são estimados a partir da coluna
-      <b>Última Atualização</b> (uma loja Com Estoque cuja última atualização caiu num certo dia "puxa"
-      mais a queda estimada pra aquele dia) — mas essa estimativa é sempre ajustada pra fechar
-      exatamente no próximo número real conhecido, nunca ultrapassando ou ficando aquém dele. Uma loja
-      com Estoque = 0 <b>nunca</b> conta como tendo subido, mesmo que a Última Atualização dela seja
-      recente — ela continua Sem Estoque. Se a aba <b>Historico_Estoque</b> já existir na planilha
-      (gerada pelo gatilho diário do Apps Script), os dias que ela cobre usam o número real gravado
-      naquele dia em vez da estimativa.
-    </p>
+    <!-- (17/11/2026) texto explicativo removido a pedido do Daniel -->
     <div class="charts-grid">
       <div class="chart-box chart-box-wide" style="height:460px"><canvas id="chart-evolucao-linha"></canvas></div>
     </div>
@@ -1164,6 +1259,7 @@ const EXPOSED_HEADERS = [
   'Login',
   'Senha',
   'Comercial',
+  'Telefone Onboarding',  // (17/11/2026) WhatsApp/telefone do responsável da loja
   'Telefone GN'   // (17/11/2026) id do GN no Ranking/Atuação; na Base_lojas antiga o cabeçalho era "Envio Atualização Estoque"
 ];
 
@@ -1476,6 +1572,7 @@ async function handleLogin() {
 }
 
 function enterDashboard() {
+  document.body.classList.add('logado');
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('filters-bar').style.display = 'flex';
@@ -1504,6 +1601,7 @@ document.getElementById('tab-ranking').addEventListener('click', function () { s
 document.getElementById('tab-evolucao').addEventListener('click', function () { showView('evolucao'); });
 document.getElementById('tab-disparos').addEventListener('click', function () { showView('disparos'); });
 document.getElementById('tab-atuacao').addEventListener('click', function () { showView('atuacao'); });
+document.getElementById('tab-registro').addEventListener('click', function () { showView('registro'); });
 
 function showView(view) {
   const isLojas = view === 'lojas';
@@ -1512,7 +1610,13 @@ function showView(view) {
   const isEvolucao = view === 'evolucao';
   const isDisparos = view === 'disparos';
   const isAtuacao = view === 'atuacao';
+  const isRegistro = view === 'registro';
   document.getElementById('atuacao-view').style.display = isAtuacao ? 'block' : 'none';
+  document.getElementById('registro-view').style.display = isRegistro ? 'block' : 'none';
+  document.getElementById('tab-registro').classList.toggle('active', isRegistro);
+  const tabAtiva = document.getElementById('tab-' + view);
+  document.getElementById('page-title').textContent = tabAtiva ? tabAtiva.textContent.replace(/^[^A-Za-zÀ-ú]+/, '').trim() : '';
+  document.getElementById('page-sub').textContent = { lojas: 'sua carteira, com e sem estoque', ranking: 'GP › GN › loja — quem atuar primeiro', registro: 'atuações feitas por fora (ligação, e-mail, WhatsApp...)', atuacao: 'quem atuou e quantas lojas subiram', evolucao: 'total de lojas por dia', disparos: 'e-mails e WhatsApp enviados', logs: 'quem acessou e o que fez' }[view] || '';
   document.getElementById('tab-atuacao').classList.toggle('active', isAtuacao);
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
   document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
@@ -1532,7 +1636,9 @@ function showView(view) {
   if (isDisparos) openDisparosView();
   if (isLogs && !logsLoaded) loadLogs();
   if (isRanking) abrirRankingAtu();
+  if (isEvolucao) renderEvolucaoEstoque();
   if (isAtuacao) abrirAtuacao();
+  if (isRegistro) abrirRegistro();
   if (typeof atualizarBatchBar === 'function') atualizarBatchBar();
 }
 
@@ -2039,10 +2145,14 @@ function applyHistoricoOverlay(evolucao, overlayMap) {
 // (o primeiro dia do recorte não tem dia anterior para comparar).
 function limitarEvolucaoAPartirDe(evolucao, desde) {
   const days = evolucao.days.filter(function (d) { return d.date.getTime() >= desde.getTime(); });
-  let prev = null;
+  // (17/11/2026) Quando o total de lojas da base muda mais de 5% de um dia para o outro (Base_lojas remontada, lojas
+  // entrando/saindo), a diferença daquele dia não é "lojas subindo estoque" — fica em branco no gráfico e na tabela.
+  let prev = null, prevTot = null;
   days.forEach(function (d) {
-    d.subiu = prev === null ? null : Math.max(0, prev - d.semEstoque);
-    prev = d.semEstoque;
+    const tot = (d.comEstoque || 0) + (d.semEstoque || 0);
+    d.baseMudou = prevTot !== null && prevTot > 0 && Math.abs(tot - prevTot) / prevTot > 0.05;
+    d.subiu = prev === null || d.baseMudou ? null : Math.max(0, prev - d.semEstoque);
+    prev = d.semEstoque; prevTot = tot;
   });
   return { totalLojas: evolucao.totalLojas, days: days };
 }
@@ -2056,6 +2166,9 @@ async function renderEvolucaoEstoque() {
   renderEvolucaoDiario(evolucao);
   renderEvolucaoTable(evolucao);
 }
+
+// teto do eixo da direita: a linha de diferença fica no meio/alto do gráfico, não colada no zero
+function escalaDif(difData) { const m = Math.max.apply(null, difData.filter(function (v) { return typeof v === 'number'; }).concat([0])); return Math.max(4, Math.ceil(m * 1.6)); }
 
 function renderEvolucaoLinha(evolucao) {
   const canvas = document.getElementById('chart-evolucao-linha');
@@ -2111,6 +2224,8 @@ function renderEvolucaoLinha(evolucao) {
         {
           label: 'Diferença de lojas (dia anterior)',
           data: difData,
+          yAxisID: 'y2',
+          spanGaps: true,   // liga os pontos por cima dos dias em branco (base mudou)
           borderColor: '#6C4AB6',
           backgroundColor: '#6C4AB6',
           borderWidth: 2,
@@ -2133,7 +2248,10 @@ function renderEvolucaoLinha(evolucao) {
       layout: { padding: { top: 22, bottom: 6, left: 6, right: 6 } },
       scales: {
         x: { offset: true, grid: { display: false } },
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } },
+        // (17/11/2026) a linha "Diferença de lojas" tem escala própria (eixo da direita) para não ficar colada no chão
+        y2: { position: 'right', beginAtZero: true, suggestedMax: escalaDif(difData), ticks: { precision: 0, color: '#6C4AB6' },
+          grid: { drawOnChartArea: false }, title: { display: true, text: 'Subiram no dia', color: '#6C4AB6', font: { family: 'Inter', size: 11 } } }
       },
       plugins: {
         legend: { display: true, position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
@@ -2181,7 +2299,8 @@ function renderEvolucaoDiario(evolucao) {
           pointBackgroundColor: '#6C4AB6',
           tension: 0.2,
           fill: false,
-          yAxisID: 'y',
+          yAxisID: 'y2',
+          spanGaps: true,   // liga os pontos por cima dos dias em branco (base mudou)
           order: 0,
           datalabels: {
             anchor: 'end', align: 'top', offset: 6,
@@ -2198,7 +2317,10 @@ function renderEvolucaoDiario(evolucao) {
       layout: { padding: { top: 16 } },
       scales: {
         x: { grid: { display: false } },
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } }
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: '#EEF1F5' } },
+        // (17/11/2026) a linha "Diferença de lojas" tem escala própria (eixo da direita) para não ficar colada no chão
+        y2: { position: 'right', beginAtZero: true, suggestedMax: escalaDif(difData), ticks: { precision: 0, color: '#6C4AB6' },
+          grid: { drawOnChartArea: false }, title: { display: true, text: 'Subiram no dia', color: '#6C4AB6', font: { family: 'Inter', size: 11 } } }
       },
       plugins: {
         legend: { position: 'bottom', labels: { font: { family: 'Inter' }, usePointStyle: true } },
@@ -2217,7 +2339,7 @@ function renderEvolucaoTable(evolucao) {
   evolucao.days.slice().reverse().forEach(function (d) {
     const tr = document.createElement('tr');
     const diaLabel = d.label.indexOf('e antes') !== -1 ? d.label : formatDateBrFull(d.date);
-    [diaLabel, d.comEstoque, d.semEstoque, d.subiu === null ? '—' : d.subiu, d.origem].forEach(function (val, idx) {
+    [diaLabel, d.comEstoque, d.semEstoque, d.baseMudou ? '— (base de lojas mudou)' : (d.subiu === null ? '—' : d.subiu), d.origem].forEach(function (val, idx) {
       const td = document.createElement('td');
       td.setAttribute('data-label', colLabels[idx]);
       td.textContent = val;
@@ -2695,9 +2817,12 @@ async function carregarPermissoesExtras() {
       }
     } catch (e) {}
   }
-  if (userPerm.gestor) {
+  // Registrar atuação: ultra, "macro" ou "Gestor". Atuação x Estoque: só "Gestor".
+  const podeRegistrar = userRole === 'ultra' || userPerm.macro || userPerm.gestor;
+  if (podeRegistrar) document.getElementById('tab-registro').style.display = '';
+  if (userPerm.gestor) document.getElementById('tab-atuacao').style.display = '';
+  if (podeRegistrar || userPerm.gestor) {
     document.getElementById('view-tabs').style.display = 'flex';
-    document.getElementById('tab-atuacao').style.display = '';
     if (userRole !== 'ultra') ['tab-logs', 'tab-ranking', 'tab-evolucao', 'tab-disparos'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
   }
   if (document.getElementById('ranking-view').style.display === 'block') renderGnRanking();
@@ -2797,7 +2922,8 @@ function lojaDe(row) {
   const sem = isEstoqueCritico(row) === true;
   const des = isEstoqueCritico(row) === false && normalizeKey(row[I_('Faixa de Atualização')]) !== 'ate 15 dias';
   return { row: row, nome: row[I_('REV_NOME')], cnpj: cnpjKeyAtu(row[I_('REV_CNPJ')]), sem: sem, des: des, estoque: row[I_('Estoque')],
-    faixa: row[I_('Faixa de Atualização')], login: row[I_('Login')], senha: row[I_('Senha')], email: row[I_('Email Onboarding')], gnId: row.gnId, gp: row[I_('GP_NOME')] };
+    faixa: row[I_('Faixa de Atualização')], login: row[I_('Login')], senha: row[I_('Senha')], email: row[I_('Email Onboarding')], gnId: row.gnId, gp: row[I_('GP_NOME')],
+    resp: String(row[I_('Resp. Onboarding')] || '').trim(), tel: telWhatsAtu([row[I_('Telefone Onboarding')]]) };
 }
 function limparSenhaOrigem(v) { const t = String(v === undefined || v === null ? '' : v); return t.indexOf('|') >= 0 ? t.split('|').pop().trim() : t; }
 function semSenhaAtu(s) { const v = String(s || '').trim().toLowerCase(); return !v || v === '-' || v === '--' || v.indexOf('resetar') >= 0; }
@@ -2911,11 +3037,16 @@ function renderGnRanking() {
       lojas.forEach(function (l) {
         const s = senhaTxtAtu(l.senha);
         html += '<tr class="loja"><td><div class="nome-cel">' + (M ? '<input type="checkbox" class="ck" data-cnpj="' + l.cnpj + '"' + (rkSelecionadas.has(l.cnpj) ? ' checked' : '') + '>' : '') +
-          '<div><div>' + atuEsc(l.nome) + '</div><div class="sub-linha mono">' + atuEsc(l.login) + ' · <span class="' + (s === 'resetar' ? 'reset-txt' : '') + '">' + atuEsc(s) + '</span></div></div></div></td>' +
+          '<div><div>' + atuEsc(l.nome) + '</div>' +
+          '<div class="sub-linha">👤 ' + atuEsc(l.resp || 'sem responsável') + ' · ' + (l.tel ? '<button class="tel-link" data-tel-copy="LOJA" data-ref="' + l.cnpj + '" data-tel="' + l.tel + '" title="Copiar número para ligar">📞 ' + telFmtAtu(l.tel) + '</button>' : '<span class="tel-link vazio">sem telefone</span>') + '</div>' +
+          '<div class="sub-linha mono">' + atuEsc(l.login) + ' · <span class="' + (s === 'resetar' ? 'reset-txt' : '') + '">' + atuEsc(s) + '</span></div></div></div></td>' +
           '<td class="num">' + (l.sem ? '<span class="badge b-sem">Sem estoque</span>' : '<span class="badge b-des" title="' + atuEsc(l.faixa) + '">Desatualizado</span>') + '</td>' +
           '<td class="num" style="color:var(--muted)">' + (l.sem ? '' : atuEsc(l.estoque) + ' carros') + '</td><td></td>' +
-          '<td><div class="row-actions"><button class="btn btn-sm btn-secondary" data-copy-loja="' + l.cnpj + '" title="Mensagem + login, senha e link do painel">📋 Copiar</button>' +
+          '<td><div class="row-actions">' +
+          (l.tel ? '<button class="icon-btn wa" data-wa="LOJA" data-ref="' + l.cnpj + '" data-tel="' + l.tel + '" title="WhatsApp do responsável">' + ICON_WA + '</button>' : '<button class="icon-btn wa" disabled title="Loja sem telefone">' + ICON_WA + '</button>') +
+          '<button class="btn btn-sm btn-secondary" data-copy-loja="' + l.cnpj + '" title="Mensagem + login, senha e link do painel">📋 Copiar</button>' +
           (M ? '<button class="icon-btn" data-mail="LOJA" data-ref="' + l.cnpj + '"' + (/@/.test(l.email) ? '' : ' disabled') + ' title="Enviar à loja pelo seu e-mail">✉</button>' : '') +
+          '<button class="icon-btn" data-registrar="' + l.cnpj + '" title="Registrar atuação feita por fora">📝</button>' +
           '</div></td></tr>';
       });
     });
@@ -2948,14 +3079,15 @@ document.getElementById('rk-body').addEventListener('click', function (e) {
   fecharPop();
   if (b.dataset.k) { rkAbertos[b.dataset.k] = !rkAbertos[b.dataset.k]; renderGnRanking(); return; }
   if (b.dataset.edit) { abrirEdicaoAtu(b.dataset.edit, b.dataset.ref); return; }
+  if (b.dataset.registrar) { showView('registro'); abrirRegistro(b.dataset.registrar); return; }
   if (b.dataset.telCopy) {
     copiarAtu(telFmtAtu(b.dataset.tel));
-    registrarAtu('copiar_telefone_' + b.dataset.telCopy.toLowerCase(), b.dataset.telCopy + ' ' + nomeRefAtu(b.dataset.telCopy, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.telCopy, b.dataset.ref), b.dataset.telCopy === 'GN' ? 'sem' : '');
+    registrarAtu('copiar_telefone_' + b.dataset.telCopy.toLowerCase(), b.dataset.telCopy + ' ' + nomeRefAtu(b.dataset.telCopy, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.telCopy, b.dataset.ref), stDoRef(b.dataset.telCopy, b.dataset.ref));
     const old = b.textContent; b.textContent = '✔ copiado'; setTimeout(function () { b.textContent = old; }, 1400); return;
   }
   if (b.dataset.wa) {
     window.open('https://web.whatsapp.com/send?phone=' + b.dataset.tel, 'whatsapp_web');
-    registrarAtu('whatsapp_' + b.dataset.wa.toLowerCase(), b.dataset.wa + ' ' + nomeRefAtu(b.dataset.wa, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.wa, b.dataset.ref), b.dataset.wa === 'GN' ? 'sem' : '');
+    registrarAtu('whatsapp_' + b.dataset.wa.toLowerCase(), b.dataset.wa + ' ' + nomeRefAtu(b.dataset.wa, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.wa, b.dataset.ref), stDoRef(b.dataset.wa, b.dataset.ref));
     return;
   }
   if (b.dataset.copyLoja) {
@@ -2966,9 +3098,10 @@ document.getElementById('rk-body').addEventListener('click', function (e) {
   }
   if (b.dataset.mail) abrirMailAtu(b.dataset.mail, b.dataset.ref);
 });
-function nomeRefAtu(tipo, ref) { return tipo === 'GP' ? ref : ((gnInfoById[ref] || {}).nome || ref); }
+function nomeRefAtu(tipo, ref) { if (tipo === 'LOJA') { const l = acharLojaAtu(ref); return l ? ref + ' - ' + l.nome : ref; } return tipo === 'GP' ? ref : ((gnInfoById[ref] || {}).nome || ref); }
 // GN: as lojas sem estoque dele contam como atuadas; GP: nenhuma loja (ação de acompanhamento)
-function cnpjsDoRef(tipo, ref) { if (tipo !== 'GN') return []; const g = acharGnRk(ref); return g ? g.semLojas.map(function (l) { return l.cnpj; }) : []; }
+function stDoRef(tipo, ref) { if (tipo === 'GN') return 'sem'; if (tipo === 'LOJA') { const l = acharLojaAtu(ref); return l ? situacaoLoja(l) : ''; } return ''; }
+function cnpjsDoRef(tipo, ref) { if (tipo === 'LOJA') return [ref]; if (tipo !== 'GN') return []; const g = acharGnRk(ref); return g ? g.semLojas.map(function (l) { return l.cnpj; }) : []; }
 document.getElementById('pop-copiar').addEventListener('click', function (e) {
   const b = e.target.closest('button'); if (!b || !popCtx) return;
   const ctx = popCtx; fecharPop();
@@ -3233,7 +3366,7 @@ async function abrirRankingAtu() {
 }
 
 /* =================== ABA ATUAÇÃO x ESTOQUE (só "Gestor") =================== */
-const ACOES_ATUACAO = /^(copiar_|baixar_|whatsapp_|enviar_credenciais|enviar_resumo|resetar_senha)/;
+const ACOES_ATUACAO = /^(copiar_|baixar_|whatsapp_|enviar_credenciais|enviar_resumo|resetar_senha|atuacao_externa)/;
 function equipeDe(email) { return /@usadosbr\.com$/i.test(String(email).trim()) ? 'Usadosbr' : 'C6'; }
 let chAtuDia = null, chAtuTaxa = null;
 function atuacoesDoLog() {
@@ -3244,7 +3377,7 @@ function atuacoesDoLog() {
     if (r.acao === 'enviar_credenciais_lote') return;   // o lote é contado pelas linhas da Disparos_realizados_email (1 por loja)
     let cnpjs = [], st = 'sem';
     const m = r.detalhe.match(/cnpjs:([\d,]+)/); if (m) cnpjs = m[1].split(',').filter(String);
-    const s = r.detalhe.match(/st:(sem|des)/); if (s) st = s[1];
+    const s = r.detalhe.match(/st:(sem|des|ok)/); if (s) st = s[1];
     if (!m && r.acao === 'resetar_senha') { const c = r.detalhe.match(/^\s*(\d{8,14})/); if (c) cnpjs = [cnpjKeyAtu(c[1])]; }
     out.push({ t: r.data, email: r.email, equipe: equipeDe(r.email), acao: r.acao, cnpjs: cnpjs, st: st });
   });
@@ -3302,7 +3435,8 @@ function renderAtuacao() {
   }
   function efet(lista) {
     const prim = {};
-    lista.forEach(function (a) { a.cnpjs.forEach(function (c) { if (!prim[c] || a.t < prim[c].t) prim[c] = { t: a.t, st: (a.sts && a.sts[c]) || a.st }; }); });
+    // loja que já estava em dia na hora da ação (ex.: parcela) conta como ação, mas não entra na taxa de "subiu estoque"
+    lista.forEach(function (a) { a.cnpjs.forEach(function (c) { const st = (a.sts && a.sts[c]) || a.st; if (st === 'ok') return; if (!prim[c] || a.t < prim[c].t) prim[c] = { t: a.t, st: st }; }); });
     const ls = Object.keys(prim), subidas = {};
     ls.forEach(function (c) { const s = subiu(c, prim[c].t, prim[c].st); if (s) subidas[c] = s; });
     const sub = Object.keys(subidas).length;
@@ -3366,6 +3500,112 @@ function renderAtuacao() {
 document.getElementById('at-equipe').addEventListener('change', renderAtuacao);
 ['at-de', 'at-ate', 'at-janela', 'at-pessoa'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderAtuacao); });
 document.getElementById('at-refresh').addEventListener('click', function () { abrirAtuacao(true); });
+
+/* =================== REGISTRAR ATUAÇÃO FEITA FORA DO DASH (17/11/2026) ===================
+   O CS escolhe a loja (nome ou CNPJ, um puxa o outro), o motivo, canal, resultado e observação.
+   Grava na aba Atuacoes_Manuais (via Dash_Atuacao.gs) + 1 linha "atuacao_externa" na aba Logs,
+   que entra na aba Atuação x Estoque como qualquer outra ação. */
+const ATU_MANUAIS_TAB = 'Atuacoes_Manuais';
+const MOTIVOS_EXTERNOS = ['Integrador de estoque', 'Login / senha', 'Publicação no painel', 'Estoque desatualizado', 'Parcela / pagamento',
+  'Fotos e anúncios', 'Leads / clientes', 'Dúvida sobre o Feirão', 'Cancelamento / insatisfação', 'Outro'];
+let regMotivo = '', regLoja = null, manuaisRows = [], regCarregado = false;
+function lojasDoRegistro() { return (userRole === 'ultra' || userRole === 'ultra_externo') ? allRowsFull : allRows; }
+function cnpjFmtAtu(c) { const d = String(c).padStart(14, '0'); return d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + '-' + d.slice(12); }
+function situacaoLoja(l) { return l.sem ? 'sem' : (l.des ? 'des' : 'ok'); }
+function preencherListasRegistro() {
+  const rows = lojasDoRegistro();
+  document.getElementById('reg-lista-nomes').innerHTML = rows.map(function (r) { return '<option value="' + atuEsc(r[I_('REV_NOME')]) + '">' + cnpjFmtAtu(cnpjKeyAtu(r[I_('REV_CNPJ')])) + '</option>'; }).join('');
+  document.getElementById('reg-lista-cnpjs').innerHTML = rows.map(function (r) { return '<option value="' + cnpjKeyAtu(r[I_('REV_CNPJ')]) + '">' + atuEsc(r[I_('REV_NOME')]) + '</option>'; }).join('');
+  document.getElementById('reg-motivos').innerHTML = MOTIVOS_EXTERNOS.map(function (m) { return '<button type="button" class="chip-motivo' + (m === regMotivo ? ' on' : '') + '" data-motivo="' + atuEsc(m) + '">' + atuEsc(m) + '</button>'; }).join('');
+}
+function selecionarLojaRegistro(l) {
+  regLoja = l;
+  const box = document.getElementById('reg-loja');
+  if (!l) { box.className = 'reg-loja'; box.innerHTML = 'Escolha a loja pelo nome ou pelo CNPJ — um preenche o outro.'; renderHistRegistro(); return; }
+  document.getElementById('reg-nome').value = l.nome;
+  document.getElementById('reg-cnpj').value = l.cnpj;
+  const gn = gnInfoById[l.gnId] || {}, st = situacaoLoja(l);
+  box.className = 'reg-loja ok';
+  box.innerHTML = '<b>' + atuEsc(l.nome) + '</b> · <span class="sub-linha mono">' + cnpjFmtAtu(l.cnpj) + '</span>' +
+    '<div class="linha">' + (st === 'sem' ? '<span class="badge b-sem">Sem estoque</span>' : st === 'des' ? '<span class="badge b-des">Desatualizado</span>' : '<span class="badge b-grn">Estoque em dia</span>') +
+    '<span>GN: <b>' + atuEsc(gn.nome || '—') + '</b></span><span>GP: ' + atuEsc(l.gp || '—') + '</span></div>' +
+    '<div class="linha">👤 ' + atuEsc(l.resp || 'responsável não informado') + (l.tel ? ' · <button class="tel-link" data-reg-tel="' + l.tel + '">📞 ' + telFmtAtu(l.tel) + '</button>' +
+      ' <button class="icon-btn wa" data-reg-wa="' + l.tel + '" title="Abrir no WhatsApp Web">' + ICON_WA + '</button>' : ' · sem telefone') + '</div>';
+  renderHistRegistro();
+}
+function acharLojaRegistro(campo, valor) {
+  const v = campo === 'cnpj' ? cnpjKeyAtu(valor) : nomeKeyAtu(valor);
+  if (!v) return null;
+  const row = lojasDoRegistro().find(function (r) { return campo === 'cnpj' ? cnpjKeyAtu(r[I_('REV_CNPJ')]) === v : nomeKeyAtu(r[I_('REV_NOME')]) === v; });
+  return row ? lojaDe(row) : null;
+}
+document.getElementById('reg-nome').addEventListener('change', function () { const l = acharLojaRegistro('nome', this.value); if (l) selecionarLojaRegistro(l); });
+document.getElementById('reg-cnpj').addEventListener('input', function () { const l = acharLojaRegistro('cnpj', this.value); if (l) selecionarLojaRegistro(l); });
+document.getElementById('reg-cnpj').addEventListener('change', function () { const l = acharLojaRegistro('cnpj', this.value); selecionarLojaRegistro(l); });
+document.getElementById('reg-motivos').addEventListener('click', function (e) {
+  const b = e.target.closest('[data-motivo]'); if (!b) return;
+  regMotivo = b.dataset.motivo;
+  document.querySelectorAll('#reg-motivos .chip-motivo').forEach(function (c) { c.classList.toggle('on', c === b); });
+});
+document.getElementById('reg-loja').addEventListener('click', function (e) {
+  const b = e.target.closest('button'); if (!b || !regLoja) return;
+  if (b.dataset.regTel) { copiarAtu(telFmtAtu(b.dataset.regTel)); toastAtu('Número copiado'); }
+  if (b.dataset.regWa) window.open('https://web.whatsapp.com/send?phone=' + b.dataset.regWa, 'whatsapp_web');
+});
+function limparRegistro() {
+  regMotivo = ''; document.getElementById('reg-obs').value = ''; document.getElementById('reg-erro').textContent = '';
+  document.getElementById('reg-nome').value = ''; document.getElementById('reg-cnpj').value = '';
+  document.querySelectorAll('#reg-motivos .chip-motivo').forEach(function (c) { c.classList.remove('on'); });
+  selecionarLojaRegistro(null);
+}
+document.getElementById('reg-limpar').addEventListener('click', limparRegistro);
+document.getElementById('reg-salvar').addEventListener('click', function () {
+  const erro = document.getElementById('reg-erro'), btn = this, obs = document.getElementById('reg-obs').value.trim();
+  if (!regLoja) { erro.textContent = 'Escolha a loja (nome ou CNPJ).'; return; }
+  if (!regMotivo) { erro.textContent = 'Escolha o motivo.'; return; }
+  if (regMotivo === 'Outro' && obs.length < 5) { erro.textContent = 'Em "Outro", descreva na observação o que foi feito.'; return; }
+  erro.textContent = '';
+  const st = situacaoLoja(regLoja), canal = document.getElementById('reg-canal').value, resultado = document.getElementById('reg-resultado').value;
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Registrando...';
+  postAtu({ action: 'atuacao_manual', cnpj: regLoja.cnpj, motivo: regMotivo, canal: canal, resultado: resultado, observacao: obs, situacao: st }).then(function (res) {
+    btn.disabled = false; btn.textContent = 'Registrar atuação';
+    if (!res.ok) { erro.textContent = 'Não registrou: ' + (res.error || 'erro'); return; }
+    manuaisRows.unshift({ 'Data': hojeBr(), 'Quem': userEmail, 'CNPJ': regLoja.cnpj, 'Loja': regLoja.nome, 'Motivo': regMotivo, 'Canal': canal, 'Resultado': resultado, 'Observação': obs });
+    logsBaseRows.unshift({ data: Date.now(), email: userEmail, acao: 'atuacao_externa', detalhe: regMotivo + ' · ' + canal + ' | cnpjs:' + regLoja.cnpj + ' | st:' + st });
+    toastAtu('Atuação registrada', regLoja.nome + ' · ' + regMotivo);
+    regMotivo = ''; document.getElementById('reg-obs').value = '';
+    document.querySelectorAll('#reg-motivos .chip-motivo').forEach(function (c) { c.classList.remove('on'); });
+    renderHistRegistro();
+  }).catch(function () { btn.disabled = false; btn.textContent = 'Registrar atuação'; erro.textContent = 'Falha de conexão. Tente de novo.'; });
+});
+async function carregarManuais() {
+  try {
+    const res = await fetch(gvizUrl(ATU_MANUAIS_TAB, true), { cache: 'no-store' });
+    if (!res.ok) { manuaisRows = []; return; }
+    manuaisRows = parseCSVToObjects(normalizaCsvGviz(await res.text())).filter(function (o) { return o['CNPJ']; })
+      .sort(function (a, b) { return horaLocalAtu(b['Data']) - horaLocalAtu(a['Data']); });
+  } catch (e) { manuaisRows = []; }
+}
+function renderHistRegistro() {
+  const f = document.getElementById('reg-hist-filtro').value;
+  const lista = manuaisRows.filter(function (r) {
+    if (f === 'minhas') return String(r['Quem']).toLowerCase() === userEmail;
+    if (f === 'loja') return regLoja && cnpjKeyAtu(r['CNPJ']) === regLoja.cnpj;
+    return true;
+  }).slice(0, 50);
+  document.getElementById('reg-hist').innerHTML = lista.length ? lista.map(function (r) {
+    return '<tr><td class="sub-linha mono" style="white-space:nowrap">' + atuEsc(r['Data']) + '</td><td>' + atuEsc(r['Loja']) + '</td>' +
+      '<td><b>' + atuEsc(r['Motivo']) + '</b><div class="sub-linha">' + atuEsc([r['Canal'], r['Resultado']].filter(Boolean).join(' · ')) + (r['Observação'] ? ' — ' + atuEsc(r['Observação']) : '') + '</div></td>' +
+      '<td class="sub-linha">' + atuEsc(String(r['Quem']).split('@')[0]) + '</td></tr>';
+  }).join('') : '<tr><td colspan="4" style="color:var(--muted)">Nenhuma atuação registrada' + (f === 'loja' && !regLoja ? ' — escolha uma loja' : '') + '.</td></tr>';
+}
+document.getElementById('reg-hist-filtro').addEventListener('change', renderHistRegistro);
+async function abrirRegistro(cnpj) {
+  preencherListasRegistro();
+  if (cnpj) { const l = acharLojaRegistro('cnpj', cnpj); if (l) selecionarLojaRegistro(l); document.getElementById('reg-hist-filtro').value = 'loja'; }
+  renderHistRegistro();
+  if (!regCarregado) { regCarregado = true; await carregarManuais(); renderHistRegistro(); }
+}
 
 /* ==================== DADOS ==================== */
 async function loadData() {
