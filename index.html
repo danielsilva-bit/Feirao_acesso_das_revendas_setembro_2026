@@ -1126,11 +1126,13 @@
     <div class="lbl">Para</div><input type="text" id="mail-to">
     <div class="lbl">Assunto</div><input type="text" id="mail-subject">
     <div class="lbl">Mensagem</div><textarea id="mail-body"></textarea>
-    <div class="sub">Abre no seu e-mail (Gmail/Outlook) e sai da sua caixa. Se o texto for grande demais para o link, o e-mail abre sem o corpo e o texto já fica copiado — é só colar.</div>
+    <div class="sub">Abre o e-mail já escrito na sua caixa (no navegador) e sai pela sua conta. A última opção usada fica lembrada.</div>
     <div class="row">
       <button class="btn btn-secondary" id="mail-cancel">Cancelar</button>
       <button class="btn btn-secondary" id="mail-copy">Copiar texto</button>
-      <button class="btn btn-steel" id="mail-send">Abrir no meu e-mail</button>
+      <button class="btn btn-secondary" id="mail-send-app" title="Programa de e-mail instalado no computador (só textos curtos)">Programa do PC</button>
+      <button class="btn btn-secondary" id="mail-send-outlook">Outlook (web)</button>
+      <button class="btn btn-steel" id="mail-send-gmail">Abrir no Gmail</button>
     </div>
   </div>
 </div>
@@ -3156,19 +3158,46 @@ function abrirMailAtu(tipo, ref) {
   document.getElementById('mail-to').value = to || '';
   document.getElementById('mail-subject').value = subj;
   document.getElementById('mail-body').value = body;
+  destacarOpcaoMail();
   document.getElementById('mail-modal').classList.add('open');
 }
 document.getElementById('mail-cancel').addEventListener('click', function () { document.getElementById('mail-modal').classList.remove('open'); });
 document.getElementById('mail-copy').addEventListener('click', function () { copiarAtu(document.getElementById('mail-body').value); toastAtu('Texto copiado'); });
-document.getElementById('mail-send').addEventListener('click', function () {
+// (17/11/2026) Abre o rascunho no Gmail ou Outlook do navegador (aceita texto grande) em vez do mailto,
+// que abria o Outlook instalado no PC e cortava mensagens longas. A escolha fica salva no navegador.
+function abrirRascunhoAtu(onde) {
   const to = document.getElementById('mail-to').value.trim(), s = document.getElementById('mail-subject').value, b = document.getElementById('mail-body').value;
-  const head = 'mailto:' + encodeURIComponent(to) + '?' + (mailCtxAtu.cc ? 'cc=' + encodeURIComponent(mailCtxAtu.cc) + '&' : '') + 'subject=' + encodeURIComponent(s);
-  const url = head + '&body=' + encodeURIComponent(b);
+  const cc = mailCtxAtu.cc || '', e = encodeURIComponent;
+  let url;
+  if (onde === 'gmail') {
+    url = 'https://mail.google.com/mail/?authuser=' + e(userEmail) + '&view=cm&fs=1&to=' + e(to) + (cc ? '&cc=' + e(cc) : '') + '&su=' + e(s) + '&body=' + e(b);
+  } else if (onde === 'outlook') {
+    url = 'https://outlook.office.com/mail/deeplink/compose?to=' + e(to) + (cc ? '&cc=' + e(cc) : '') + '&subject=' + e(s) + '&body=' + e(b);
+  } else {
+    url = 'mailto:' + e(to) + '?' + (cc ? 'cc=' + e(cc) + '&' : '') + 'subject=' + e(s) + '&body=' + e(b);
+  }
+  const limite = onde === 'app' ? 1900 : 7500;
+  if (url.length > limite) {
+    // texto grande demais até para o navegador: abre sem o corpo e deixa o texto copiado
+    url = url.replace(/&body=[^&]*$/, '');
+    copiarAtu(b);
+    toastAtu('Mensagem muito longa para o link: o rascunho abre sem o texto — ele já está copiado, é só colar (Ctrl+V).');
+  }
+  try { localStorage.setItem('estoque_mail_onde', onde); } catch (err) {}
   registrarAtu(mailCtxAtu.acao, mailCtxAtu.det, mailCtxAtu.cnpjs, mailCtxAtu.st);
-  if (url.length > 1900) { copiarAtu(b); toastAtu('Texto grande: o e-mail abre sem o corpo — o texto já foi copiado, é só colar.'); window.location.href = head; }
-  else window.location.href = url;
+  if (onde === 'app') window.location.href = url; else window.open(url, '_blank');
   document.getElementById('mail-modal').classList.remove('open');
-});
+}
+document.getElementById('mail-send-gmail').addEventListener('click', function () { abrirRascunhoAtu('gmail'); });
+document.getElementById('mail-send-outlook').addEventListener('click', function () { abrirRascunhoAtu('outlook'); });
+document.getElementById('mail-send-app').addEventListener('click', function () { abrirRascunhoAtu('app'); });
+// destaca (botão azul) a última opção usada nesse navegador
+function destacarOpcaoMail() {
+  let onde = 'gmail'; try { onde = localStorage.getItem('estoque_mail_onde') || 'gmail'; } catch (err) {}
+  [['gmail', 'mail-send-gmail'], ['outlook', 'mail-send-outlook'], ['app', 'mail-send-app']].forEach(function (x) {
+    const el = document.getElementById(x[1]); el.className = 'btn ' + (x[0] === onde ? 'btn-steel' : 'btn-secondary');
+  });
+}
 
 /* ---------- seleção e envio em lote (Dash_Atuacao.gs) ---------- */
 function atualizarBatchBar() {
