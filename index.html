@@ -595,6 +595,120 @@
     animation: spin 0.7s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ==================== ATUAÇÃO (17/11/2026): Ranking em árvore GP › GN › Loja, ações do CS,
+     aba Atuação x Estoque, ajustes manuais de contato, envio em lote ==================== */
+  :root {
+    --acc-red-bg:#FDE4E4; --acc-red:#A12C35;
+    --acc-mus-bg:#FBF0C8; --acc-mus:#8A6A0F;
+    --acc-grn-bg:#E3F5E8; --acc-grn:#2E7D4F;
+    --purple:#7B4FD6;
+  }
+  #atuacao-view { display: none; }
+  .tree-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow-x: auto; box-shadow: 0 1px 2px rgba(20,21,26,.04); }
+  table.tree { white-space: normal; }
+  table.tree thead th { position: static; }
+  .tree tbody tr:hover { background: inherit; }
+  .tree tbody td { padding-top: 9px; padding-bottom: 9px; vertical-align: middle; }
+  .tree tr.gp td { background: var(--steel); color: #fff; border-bottom: 1px solid #24395a; padding-top: 12px; padding-bottom: 12px; }
+  .tree tr.gp .nome { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 700; }
+  .tree tr.gp .lvl { background: var(--gold); color: #1A1200; }
+  .tree tr.gp .arrow { color: #fff; }
+  .tree tr.gp .bar { background: rgba(255,255,255,.2); }
+  .tree tr.gp .bar span { background: #fff; opacity: .9; }
+  .tree tr.gp .btn-secondary, .tree tr.gp .icon-btn:not(.wa) { background: transparent; color: #fff; border-color: rgba(255,255,255,.45); }
+  .tree tr.gp .sub-linha { color: #C9D3E3; }
+  .tree tr.gp .tel-link:hover { color: #fff; }
+  .tree tr.gp .des-chip { background: rgba(251,240,200,.2); color: #F4DC8E; }
+  .tree tr.gp .man-tag { color: #F4DC8E; }
+  .tree tr.gp .ck { accent-color: var(--gold); }
+  .tree tr.gn td { background: #fff; }
+  .tree tr.gn td:first-child { padding-left: 26px; }
+  .tree tr.gn .nome { font-weight: 600; }
+  .tree tr.loja td { background: #FAFBFC; font-size: 12.5px; }
+  .tree tr.loja td:first-child { padding-left: 60px; }
+  .tree tr.gn.acc-red td:first-child { box-shadow: inset 4px 0 0 #E3878F; }
+  .tree tr.gn.acc-mus td:first-child { box-shadow: inset 4px 0 0 #E2C056; }
+  .tree tr.gn.acc-grn td:first-child { box-shadow: inset 4px 0 0 #8FD0A8; }
+  .tree tr.gap td { padding: 0; height: 10px; background: var(--bg); border: none; }
+  .nome-cel { display: flex; align-items: center; gap: 2px; }
+  .nome-cel > div { min-width: 0; }
+  .arrow { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center; border: none; background: transparent; cursor: pointer; color: var(--steel); font-size: 11px; margin-right: 4px; transition: transform .15s; flex: none; }
+  .arrow.open { transform: rotate(90deg); }
+  .lvl { display: inline-block; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; border-radius: 4px; padding: 2px 6px; margin-right: 8px; letter-spacing: .06em; flex: none; }
+  .tree tr.gn .lvl { background: var(--steel-bg); color: var(--steel); }
+  .sub-linha { font-size: 11.5px; color: var(--muted); margin-top: 2px; font-weight: 400; font-family: 'Inter', sans-serif; }
+  .sub-linha.mono { font-family: 'IBM Plex Mono', monospace; }
+  .tel-link { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; border-bottom: 1px dashed currentColor; }
+  .tel-link:hover { color: var(--steel); }
+  .tel-link.vazio { border: none; cursor: default; opacity: .75; }
+  .info { font-size: 12px; color: var(--muted); cursor: help; font-weight: 400; }
+  .pencil { background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 2px; margin-left: 4px; opacity: .6; }
+  .pencil:hover { opacity: 1; }
+  .man-tag { font-size: 10px; color: var(--gold); margin-left: 3px; }
+  .qty { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+  .qty b { font-family: 'Space Grotesk', sans-serif; font-size: 16px; min-width: 26px; text-align: right; }
+  .bar { width: 90px; height: 7px; background: var(--gray-bg); border-radius: 4px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--danger); opacity: .75; }
+  .des-chip { font-size: 10.5px; font-weight: 700; color: var(--acc-mus); background: var(--acc-mus-bg); border-radius: 999px; padding: 1px 6px; min-width: 26px; text-align: center; }
+  .des-chip.vazio { background: transparent; }
+  .num { text-align: right; }
+  .reset-txt { color: var(--danger); font-weight: 700; }
+  .badge.b-red { background: var(--acc-red-bg); color: var(--acc-red); }
+  .badge.b-mus { background: var(--acc-mus-bg); color: var(--acc-mus); }
+  .badge.b-grn { background: var(--acc-grn-bg); color: var(--acc-grn); }
+  .badge.b-sem { background: #FBEAEC; color: var(--danger); }
+  .badge.b-des { background: var(--acc-mus-bg); color: var(--acc-mus); }
+  .badge.b-ubr { background: #E4FBEE; color: #00813B; }
+  .badge.b-c6 { background: var(--steel-bg); color: var(--steel); }
+  .row-actions { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
+  .icon-btn { width: 32px; height: 30px; border-radius: 7px; border: 1px solid var(--border); background: #fff; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; padding: 0; color: var(--steel); flex: none; }
+  .icon-btn:hover { background: var(--gray-bg); }
+  .icon-btn[disabled] { opacity: .35; cursor: not-allowed; }
+  .icon-btn.wa { background: #25D366; border-color: #25D366; }
+  .icon-btn.wa svg { width: 17px; height: 17px; fill: #fff; }
+  .ck { width: 16px; height: 16px; margin: 0 6px 0 0; cursor: pointer; accent-color: var(--steel); flex: none; }
+  .legend-atu { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; margin: 0 0 10px; align-items: center; color: var(--muted); }
+  .pop-menu { position: fixed; background: #fff; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 20px rgba(20,21,26,.15); z-index: 80; min-width: 170px; padding: 4px; display: none; }
+  .pop-menu.open { display: block; }
+  .pop-menu button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 8px 10px; font-size: 13px; border-radius: 6px; cursor: pointer; color: var(--ink); font-family: 'Inter', sans-serif; }
+  .pop-menu button:hover { background: var(--gray-bg); }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(11,12,16,.45); z-index: 70; align-items: center; justify-content: center; padding: 16px; }
+  .modal-bg.open { display: flex; }
+  .modal { background: #fff; border-radius: 12px; width: min(620px, 100%); max-height: 90vh; overflow: auto; padding: 20px; }
+  .modal h3 { margin: 0 0 4px; font-family: 'Space Grotesk', sans-serif; }
+  .modal .sub { color: var(--muted); font-size: 13px; margin-bottom: 12px; line-height: 1.45; }
+  .modal .lbl { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .modal input[type=text], .modal input[type=email], .modal textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: 'Inter', sans-serif; margin: 4px 0 10px; }
+  .modal textarea { height: 220px; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .modal .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .modal .warn { color: var(--danger); font-weight: 600; font-size: 13px; margin-bottom: 8px; }
+  .lote-list { max-height: 240px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; margin: 6px 0 12px; }
+  .lote-list div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .lote-list div:last-child { border-bottom: none; }
+  .batch-bar { position: fixed; left: 50%; bottom: 18px; transform: translate(-50%, 140px); background: var(--brand); color: #fff; border-radius: 12px; padding: 10px 12px 10px 16px; display: flex; gap: 10px; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.25); z-index: 60; transition: transform .2s; flex-wrap: wrap; max-width: calc(100% - 24px); }
+  .batch-bar.show { transform: translate(-50%, 0); }
+  .batch-bar:not(.show) { visibility: hidden; }
+  .batch-bar b { font-family: 'Space Grotesk', sans-serif; font-size: 15px; }
+  .batch-bar .btn-secondary { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+  .toast-atu { position: fixed; bottom: 20px; right: 20px; background: var(--brand); color: #fff; padding: 12px 16px; border-radius: 10px; font-size: 13px; max-width: 380px; z-index: 90; opacity: 0; transform: translateY(10px); transition: .2s; pointer-events: none; }
+  .toast-atu.show { opacity: 1; transform: none; }
+  .toast-atu small { color: var(--gold); display: block; margin-top: 4px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .atu-charts { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .atu-chart-box { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 16px; height: 330px; position: relative; }
+  tr.eq-row td { background: #F7F8FA; font-weight: 600; }
+  @media (max-width: 900px) { .atu-charts { grid-template-columns: 1fr; } }
+  /* a árvore e a tabela de atuação continuam como tabela no celular (rolagem lateral), sem virar cards */
+  @media (max-width: 720px) {
+    .tree-wrap { overflow-x: auto; }
+    table.tree, table.tree thead, table.tree tbody { display: table-row-group; }
+    table.tree { display: table; min-width: 760px; }
+    table.tree thead { display: table-header-group; }
+    table.tree tr { display: table-row; border: none; border-radius: 0; margin: 0; padding: 0; box-shadow: none; }
+    table.tree th, table.tree td { display: table-cell; text-align: left; }
+    table.tree td::before { content: none; }
+    table.tree td.num { text-align: right; }
+  }
 </style>
 </head>
 <body>
@@ -610,6 +724,7 @@
     <button class="view-tab" id="tab-ranking" type="button">Ranking GN Sem Estoque</button>
     <button class="view-tab" id="tab-evolucao" type="button">Evolução do Estoque</button>
     <button class="view-tab" id="tab-disparos" type="button">Disparos</button>
+    <button class="view-tab" id="tab-atuacao" type="button" style="display:none">Atuação x Estoque</button>
   </nav>
   <div id="user-box" style="display:none;">
     <span>Logado como <b id="user-email"></b></span>
@@ -746,46 +861,67 @@
 
   <div id="ranking-view">
     <div class="toolbar">
+      <div class="field">
+        <label>Acesso ao Dash</label>
+        <select id="rk-acc"><option value="">Todos</option><option value="red">Nunca / mais de 7 dias</option><option value="mus">3 a 7 dias</option><option value="grn">Até 2 dias</option></select>
+      </div>
       <div class="actions">
+        <button class="btn btn-secondary" id="rk-expand">Expandir tudo</button>
+        <button class="btn btn-secondary" id="rk-collapse">Recolher tudo</button>
         <button class="btn btn-green" id="ranking-download-btn">⬇ Baixar Ranking (Excel)</button>
       </div>
     </div>
 
-    <div class="charts-heading">Ranking de GN por lojas sem estoque (maior para menor) — segue os filtros acima</div>
-
-    <div id="ranking-results-count"></div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>GN</th>
-            <th>Lojas sem Estoque</th>
-            <th>Total de Lojas</th>
-            <th>% sem Estoque (do próprio GN)</th>
-          </tr>
-        </thead>
-        <tbody id="ranking-table-body"></tbody>
+    <div class="legend-atu">
+      <span id="rk-perm-note"></span>
+      <span style="margin-left:auto">Acesso ao Dash:</span>
+      <span class="badge b-red">nunca / +7 dias</span>
+      <span class="badge b-mus">3–7 dias</span>
+      <span class="badge b-grn">até 2 dias</span>
+    </div>
+    <div id="ranking-results-count" style="font-size:13px;color:var(--muted);margin:0 0 8px"></div>
+    <div class="tree-wrap">
+      <table class="tree">
+        <thead><tr>
+          <th>GP › GN › Loja</th>
+          <th class="num">Sem estoque (+desat.)</th>
+          <th class="num">Lojas</th>
+          <th>Acesso ao Dash</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="rk-body"></tbody>
       </table>
     </div>
+  </div>
 
-    <div class="charts-heading">Ranking por GP (GNs agrupados dentro de cada GP) — segue os mesmos filtros; filtrar por um GP mostra só o grupo dele</div>
-
-    <div id="ranking-gp-results-count"></div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>GN</th>
-            <th>Lojas sem Estoque</th>
-            <th>Total de Lojas</th>
-            <th>% sem Estoque (do próprio GN)</th>
-          </tr>
-        </thead>
-        <tbody id="ranking-gp-table-body"></tbody>
+  <div id="atuacao-view">
+    <div class="toolbar">
+      <div class="field"><label>De</label><input type="date" id="at-de"></div>
+      <div class="field"><label>Até</label><input type="date" id="at-ate"></div>
+      <div class="field"><label>Janela pós-atuação</label>
+        <select id="at-janela"><option value="3">Subiu em até 3 dias</option><option value="7" selected>Subiu em até 7 dias</option></select></div>
+      <div class="field"><label>Equipe</label>
+        <select id="at-equipe"><option value="">Usadosbr + C6</option><option value="Usadosbr">Usadosbr</option><option value="C6">C6</option></select></div>
+      <div class="field"><label>Pessoa</label><select id="at-pessoa"><option value="">Todas</option></select></div>
+      <div class="actions"><button class="btn btn-gold" id="at-refresh">↻ Atualizar</button></div>
+    </div>
+    <div id="atuacao-status-msg" class="evolucao-nota" style="display:none"></div>
+    <p class="evolucao-nota">
+      <b>O que conta como atuação:</b> cada ação feita pelo Dash numa loja ou na carteira de um GN — copiar mensagem/acessos,
+      imagem, WhatsApp, telefone, e-mail (individual ou em lote), resetar senha. Abrir o Dash e usar filtro <b>não</b> contam.
+      Uma loja <b>subiu após atuação</b> quando estava sem estoque (ou desatualizada) na hora da ação e hoje está com estoque
+      (ou em dia), com a Última Atualização dentro da janela escolhida. É correlação, não prova de causa.
+    </p>
+    <div class="stats-grid" id="at-stats"></div>
+    <div class="atu-charts">
+      <div class="atu-chart-box"><canvas id="at-chart-dia"></canvas></div>
+      <div class="atu-chart-box"><canvas id="at-chart-taxa"></canvas></div>
+    </div>
+    <div class="charts-heading">Atuação por pessoa</div>
+    <div class="tree-wrap">
+      <table class="tree">
+        <thead><tr><th>Equipe / quem atuou</th><th class="num">Ações</th><th class="num">Lojas atuadas</th><th class="num">Subiram</th><th class="num">Taxa</th><th>Ação mais usada</th></tr></thead>
+        <tbody id="at-body"></tbody>
       </table>
     </div>
   </div>
@@ -809,6 +945,14 @@
       <div class="field">
         <label>Mensagem</label>
         <select id="disparos-f-msg"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label>De</label>
+        <input type="date" id="disparos-de" />
+      </div>
+      <div class="field">
+        <label>Até</label>
+        <input type="date" id="disparos-ate" />
       </div>
       <div class="actions">
         <button class="btn btn-gold" id="disparos-refresh-btn">↻ Atualizar</button>
@@ -874,6 +1018,79 @@
   </div>
 
 </main>
+
+<!-- ==================== ATUAÇÃO: menus, janelas e avisos (17/11/2026) ==================== -->
+<div class="pop-menu" id="pop-copiar">
+  <button data-pop="img">🖼 Como imagem</button>
+  <button data-pop="txt">📝 Como texto</button>
+</div>
+<div class="modal-bg" id="mail-modal">
+  <div class="modal">
+    <h3>Enviar por e-mail</h3>
+    <div class="sub" id="mail-sub"></div>
+    <div class="lbl">Para</div><input type="text" id="mail-to">
+    <div class="lbl">Assunto</div><input type="text" id="mail-subject">
+    <div class="lbl">Mensagem</div><textarea id="mail-body"></textarea>
+    <div class="sub">Abre no seu e-mail (Gmail/Outlook) e sai da sua caixa. Se o texto for grande demais para o link, o e-mail abre sem o corpo e o texto já fica copiado — é só colar.</div>
+    <div class="row">
+      <button class="btn btn-secondary" id="mail-cancel">Cancelar</button>
+      <button class="btn btn-secondary" id="mail-copy">Copiar texto</button>
+      <button class="btn btn-steel" id="mail-send">Abrir no meu e-mail</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="lote-modal">
+  <div class="modal">
+    <h3>Enviar login e senha em lote</h3>
+    <div class="sub" id="lote-sub"></div>
+    <div class="lote-list" id="lote-list"></div>
+    <label style="font-size:13px;display:flex;gap:8px;align-items:center;margin-bottom:8px"><input type="checkbox" id="lote-cc" checked> Colocar o GN de cada loja em cópia</label>
+    <div class="sub">Cada loja recebe <b>1 e-mail separado</b>, só com o próprio login e senha (sem senha → "Esqueci minha senha"), no mesmo layout da macro. Sai pela conta do Feirão com <b id="lote-eu"></b> em cópia e como "Responder para". Lojas com estoque em dia são puladas. Fica registrado na aba Disparos_realizados_email (Origem = Dash).</div>
+    <div class="warn" id="lote-erro"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="lote-cancel">Cancelar</button>
+      <button class="btn btn-steel" id="lote-send">Enviar</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="img-modal">
+  <div class="modal" style="width:min(780px,100%)">
+    <h3 id="img-title">Resumo em imagem</h3>
+    <div class="sub">Pronto para colar no WhatsApp (Ctrl+V na conversa) ou baixar.</div>
+    <div style="background:var(--bg);border-radius:8px;padding:10px;text-align:center;max-height:60vh;overflow:auto"><img id="img-prev" style="max-width:100%;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.12)" alt=""></div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn btn-secondary" id="img-close">Fechar</button>
+      <button class="btn btn-secondary" id="img-texto">Copiar como texto</button>
+      <button class="btn btn-secondary" id="img-baixar">⬇ Baixar PNG</button>
+      <button class="btn btn-steel" id="img-copiar">📋 Copiar imagem</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="edit-modal">
+  <div class="modal" style="width:min(560px,100%)">
+    <h3 id="edit-title">Contato</h3>
+    <div class="sub">Inclua ou corrija o contato. Deixe em branco o que não quiser mexer.</div>
+    <div class="lbl">Telefone (com DDD)</div><input type="text" id="edit-tel" placeholder="(11) 91234-5678">
+    <div class="sub" id="edit-tel-orig" style="margin-top:-6px"></div>
+    <div class="lbl">E-mail</div><input type="email" id="edit-email" placeholder="nome@c6bank.com">
+    <div class="sub" id="edit-email-orig" style="margin-top:-6px"></div>
+    <div class="warn" id="edit-erro"></div>
+    <div class="sub">Grava na aba <b>Ajustes_Contatos</b> da planilha (quem, quando, antes e depois) e passa a valer para todo mundo no Dash, por cima da Base_lojas.</div>
+    <div id="edit-hist"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="edit-cancel">Cancelar</button>
+      <button class="btn btn-steel" id="edit-save">Salvar</button>
+    </div>
+  </div>
+</div>
+<div class="batch-bar" id="batch-bar">
+  <b id="batch-n">0 lojas</b><span style="color:#B0B5BE;font-size:12px">selecionadas</span>
+  <button class="btn btn-sm btn-secondary" id="batch-copy">📋 Copiar mensagens</button>
+  <button class="btn btn-sm btn-gold" id="batch-mail">✉ Enviar e-mail às lojas</button>
+  <button class="btn btn-sm btn-secondary" id="batch-clear">Limpar</button>
+</div>
+<div class="toast-atu" id="toast-atu"></div>
+
 
 <footer>Usadosbr &middot; Dashboard interno &middot; acesso e ações são registrados</footer>
 
@@ -946,7 +1163,8 @@ const EXPOSED_HEADERS = [
   'Faixa de Atualização',
   'Login',
   'Senha',
-  'Comercial'
+  'Comercial',
+  'Telefone GN'   // (17/11/2026) id do GN no Ranking/Atuação; na Base_lojas antiga o cabeçalho era "Envio Atualização Estoque"
 ];
 
 const FILTER_COLUMNS = {
@@ -1268,6 +1486,7 @@ function enterDashboard() {
     document.getElementById('view-tabs').style.display = 'flex';
   }
   loadData();
+  carregarPermissoesExtras();
 }
 
 document.getElementById('logout-btn') && document.getElementById('logout-btn').addEventListener('click', function () {
@@ -1284,6 +1503,7 @@ document.getElementById('tab-logs').addEventListener('click', function () { show
 document.getElementById('tab-ranking').addEventListener('click', function () { showView('ranking'); });
 document.getElementById('tab-evolucao').addEventListener('click', function () { showView('evolucao'); });
 document.getElementById('tab-disparos').addEventListener('click', function () { showView('disparos'); });
+document.getElementById('tab-atuacao').addEventListener('click', function () { showView('atuacao'); });
 
 function showView(view) {
   const isLojas = view === 'lojas';
@@ -1291,6 +1511,9 @@ function showView(view) {
   const isRanking = view === 'ranking';
   const isEvolucao = view === 'evolucao';
   const isDisparos = view === 'disparos';
+  const isAtuacao = view === 'atuacao';
+  document.getElementById('atuacao-view').style.display = isAtuacao ? 'block' : 'none';
+  document.getElementById('tab-atuacao').classList.toggle('active', isAtuacao);
   document.getElementById('dashboard').style.display = isLojas ? 'block' : 'none';
   document.getElementById('logs-view').style.display = isLogs ? 'block' : 'none';
   document.getElementById('ranking-view').style.display = isRanking ? 'block' : 'none';
@@ -1308,8 +1531,9 @@ function showView(view) {
   document.getElementById('tab-disparos').classList.toggle('active', isDisparos);
   if (isDisparos) openDisparosView();
   if (isLogs && !logsLoaded) loadLogs();
-  if (isRanking) renderGnRanking();
-  if (isEvolucao) renderEvolucaoEstoque();
+  if (isRanking) abrirRankingAtu();
+  if (isAtuacao) abrirAtuacao();
+  if (typeof atualizarBatchBar === 'function') atualizarBatchBar();
 }
 
 /* ==================== RANKING GN SEM ESTOQUE (só ultra) ====================
@@ -1358,7 +1582,7 @@ function gnRankingToDisplayRows(list) {
   });
 }
 
-function renderGnRanking() {
+function renderGnRankingTabelaAntiga() {
   const list = computeGnSemEstoqueRanking(getFilteredRows());
   const tbody = document.getElementById('ranking-table-body');
   tbody.innerHTML = '';
@@ -2297,23 +2521,23 @@ function renderDisparosStats() {
     }
     box.appendChild(c);
   }
-  // E-mail
-  let enviados = 0, lojasEmail = 0;
-  Object.keys(disparosByCnpj).forEach(function (k) { const q = Number(disparosByCnpj[k]['Qtd envios'] || 0); enviados += q; if (q > 0) lojasEmail++; });
-  const probEmail = contatosRows.length;
-  card('stat-card-usadosbr', 'E-mails enviados', String(enviados), lojasEmail + ' loja(s) atingida(s)',
-    [probEmail + ' com problema (falha ou inválido)']);
-  // WhatsApp
-  const cont = { LIDA: 0, RECEBIDA: 0, ENVIADA: 0, ERRO: 0 };
-  neppoRows.forEach(function (r) { if (cont[r.status] !== undefined) cont[r.status]++; });
-  const totalW = neppoRows.length;
-  const pctErro = totalW ? Math.round(cont.ERRO / totalW * 1000) / 10 : 0;
-  card('stat-card-c6', 'WhatsApp', String(totalW), totalW ? pctErro.toString().replace('.', ',') + '% com erro' : 'Preencha a aba Disparos_Whatsapp',
-    ['Lidas: ' + cont.LIDA, 'Entregues: ' + cont.RECEBIDA, 'Enviadas: ' + cont.ENVIADA, 'Recusados/falhas: ' + cont.ERRO]);
-  // números sem loja
-  const nums = {}, semLoja = {};
-  neppoRows.forEach(function (r) { const kk = r.num || r.cnpj; nums[kk] = true; if (!r.match) semLoja[kk] = true; });
-  const nN = Object.keys(nums).length, nS = Object.keys(semLoja).length;
+  // (17/11/2026) os cards seguem o filtro de data; "E-mails enviados" conta só Status ENVIADO — falha não conta como enviado
+  const noPeriodo = disparosViewRows.filter(dentroDoPeriodoDisparo);
+  const de = document.getElementById('disparos-de').value, ate = document.getElementById('disparos-ate').value;
+  const per = (de || ate) ? ' · ' + (de ? de.split('-').reverse().join('/') : 'início') + ' a ' + (ate ? ate.split('-').reverse().join('/') : 'hoje') : '';
+  const em = noPeriodo.filter(function (r) { return r.canal === 'E-mail' && r.ordem >= 0; });
+  const falhas = em.filter(function (r) { return r.problema === 'Falha no envio'; }).length;
+  const enviadosRows = em.filter(function (r) { return r.problema !== 'Falha no envio'; });
+  const invalidos = enviadosRows.filter(function (r) { return r.tipo === 'erro'; }).length;
+  const lojasEmail = new Set(enviadosRows.map(function (r) { return r.loja; }).filter(Boolean)).size;
+  card('stat-card-usadosbr', 'E-mails enviados', String(enviadosRows.length), lojasEmail + ' loja(s) atingida(s)' + per,
+    [falhas + ' falha(s) no envio (não contam)', invalidos + ' devolvido(s)/inválido(s)']);
+  const wa = noPeriodo.filter(function (r) { return r.canal === 'WhatsApp'; });
+  const conta = function (txt) { return wa.filter(function (r) { return r.problema === txt; }).length; };
+  const erroW = wa.filter(function (r) { return r.tipo === 'erro'; }).length;
+  card('stat-card-c6', 'WhatsApp', String(wa.length), wa.length ? (Math.round(erroW / wa.length * 1000) / 10).toString().replace('.', ',') + '% com erro' + per : 'Preencha a aba Disparos_Whatsapp',
+    ['Lidas: ' + conta('WhatsApp lido'), 'Entregues: ' + conta('WhatsApp entregue'), 'Enviadas: ' + conta('WhatsApp enviado'), 'Recusados/falhas: ' + erroW]);
+  const nN = wa.length, nS = wa.filter(function (r) { return r.loja === 'Sem loja na base'; }).length;
   card(nS && nN && nS / nN > 0.2 ? 'stat-card-warn' : '', 'Contatos sem loja na base', String(nS),
     nN ? Math.round(nS / nN * 100) + '% dos ' + nN + ' contatos de WhatsApp' : '',
     ['CNPJ ou telefone não encontrados na Base_lojas']);
@@ -2334,12 +2558,22 @@ function fillDisparosFilters() {
   fill('disparos-f-msg', disparosViewRows.map(function (r) { return r.msg; }), 'Todas');
 }
 
+// (17/11/2026) filtro de data da aba Disparos — vale para a lista E para os cards
+function dentroDoPeriodoDisparo(r) {
+  const de = document.getElementById('disparos-de').value, ate = document.getElementById('disparos-ate').value;
+  if (!de && !ate) return true;
+  if (r.t === null || r.t === undefined) return false;
+  if (de) { const p = de.split('-'); if (r.t < Date.UTC(+p[0], +p[1] - 1, +p[2])) return false; }
+  if (ate) { const p = ate.split('-'); if (r.t > Date.UTC(+p[0], +p[1] - 1, +p[2], 23, 59, 59)) return false; }
+  return true;
+}
 function getDisparosFiltered() {
   const q = document.getElementById('disparos-search').value.trim().toLowerCase();
   const canal = document.getElementById('disparos-f-canal').value;
   const prob = document.getElementById('disparos-f-problema').value;
   const msg = document.getElementById('disparos-f-msg').value;
   return disparosViewRows.filter(function (r) {
+    if (!dentroDoPeriodoDisparo(r)) return false;
     if (canal && r.canal !== canal) return false;
     if (prob && r.problema !== prob) return false;
     if (msg && r.msg !== msg) return false;
@@ -2371,6 +2605,7 @@ function renderDisparosTable() {
 
 ['disparos-search'].forEach(function (id) { document.getElementById(id).addEventListener('input', renderDisparosTable); });
 ['disparos-f-canal', 'disparos-f-problema', 'disparos-f-msg'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderDisparosTable); });
+['disparos-de', 'disparos-ate'].forEach(function (id) { document.getElementById(id).addEventListener('change', function () { renderDisparosStats(); renderDisparosTable(); }); });
 document.getElementById('disparos-refresh-btn').addEventListener('click', openDisparosView);
 document.getElementById('disparos-download-btn').addEventListener('click', function () {
   const rows = getDisparosFiltered().map(disparoRowToCells);
@@ -2379,6 +2614,758 @@ document.getElementById('disparos-download-btn').addEventListener('click', funct
   showStatus(rows.length + ' contato(s) baixado(s).', 'success');
   logToBackend('download', 'Disparos - status dos envios (' + rows.length + ')');
 });
+
+/* =====================================================================================
+   ATUAÇÃO DO CS (17/11/2026) — Ranking em árvore GP › GN › Loja, cópia de mensagens
+   (texto/imagem), WhatsApp/telefone, e-mail individual (pelo e-mail de quem clica) e em
+   lote (via Dash_Atuacao.gs), lápis de contato (aba Ajustes_Contatos) e aba "Atuação x
+   Estoque". Permissões extras lidas da Usuários_permitidos: "macro" (e-mail + lote + lápis)
+   e "Gestor" (aba Atuação). O Daniel fica fixo com tudo (ATU_ADMIN).
+   ===================================================================================== */
+const ATUACAO_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbwCZmB1UxgVv_3w8iw0dNm1Cw9TfE5630J_xyqPBi30PVSCAh6bcdDbR0NGwU5Q9nV2/exec';
+const ATU_ADMIN = ['daniel.silva@usadosbr.com'];
+const PAINEL_URL = 'https://console.usadosbr.com/painel-revenda';
+const DASH_URL = 'https://estoque-feirao-usadosbr.netlify.app';
+const AJUSTES_TAB = 'Ajustes_Contatos';
+let userPerm = { macro: false, gestor: false };
+let gnInfoById = {};          // id -> { id, nome, variantes, tels[], emails{} }
+let gpEmailByNome = {};       // GP_NOME (canônico) -> e-mail mais frequente em "Email GP"
+let ajustesRows = [];         // linhas da aba Ajustes_Contatos
+let acessoPorEmail = {};      // e-mail -> timestamp do último "acesso" na aba Logs
+let logsBaseRows = [];        // Logs completos (para a aba Atuação)
+let atuDadosCarregados = false;
+const rkAbertos = {};
+const rkSelecionadas = new Set();
+
+/* ---------- utilidades ---------- */
+function atuEsc(s) { return String(s === undefined || s === null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function nomeKeyAtu(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); }
+function telKeyAtu(t) {
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length >= 12 && d.indexOf('55') === 0) d = d.slice(2);
+  return d.length >= 10 ? d.slice(0, 2) + d.slice(-8) : '';
+}
+function telWhatsAtu(lista) {
+  const ds = (lista || []).map(function (t) { let d = String(t || '').replace(/\D/g, ''); if (d.length >= 12 && d.indexOf('55') === 0) d = d.slice(2); return d; })
+    .filter(function (d) { return d.length === 10 || d.length === 11; });
+  if (!ds.length) return '';
+  let d = ds.filter(function (x) { return x.length === 11; })[0] || ds[0];
+  if (d.length === 10 && /[6-9]/.test(d[2])) d = d.slice(0, 2) + '9' + d.slice(2);
+  return '55' + d;
+}
+function telFmtAtu(tel) { const d = String(tel).replace(/^55/, ''); return '(' + d.slice(0, 2) + ') ' + d.slice(2, d.length - 4) + '-' + d.slice(-4); }
+function cnpjKeyAtu(v) { return String(v || '').replace(/\D/g, '').replace(/^0+/, ''); }
+// "17/11/2026 15:40:00" ou "2026-11-17 15:40:00" -> timestamp local
+function horaLocalAtu(str) { const u = parseDisparoHora(str); if (u === null) return parseLogDate(str); const d = new Date(u); return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds()).getTime(); }
+function hojeBr() { const d = new Date(); return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+const ICON_WA = '<svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.8 14.06c-.24.68-1.42 1.3-1.95 1.34-.5.05-.97.23-3.27-.68-2.77-1.09-4.52-3.92-4.66-4.1-.13-.18-1.11-1.48-1.11-2.83s.71-2 .96-2.28c.25-.27.55-.34.73-.34h.52c.17 0 .4-.06.62.48.24.55.78 1.9.84 2.04.07.14.11.3.02.48-.09.18-.14.3-.27.46-.14.16-.29.36-.41.48-.14.14-.28.29-.12.56.16.27.71 1.17 1.52 1.9 1.05.93 1.93 1.22 2.2 1.36.27.14.43.11.59-.07.16-.18.68-.8.86-1.07.18-.27.36-.23.61-.14.25.09 1.59.75 1.86.89.27.14.45.2.52.32.07.11.07.66-.17 1.3z"/></svg>';
+let toastAtuT;
+function toastAtu(t, s) { const el = document.getElementById('toast-atu'); el.innerHTML = atuEsc(t) + (s ? '<small>' + atuEsc(s) + '</small>' : ''); el.classList.add('show'); clearTimeout(toastAtuT); toastAtuT = setTimeout(function () { el.classList.remove('show'); }, 3000); }
+function copiarAtu(txt) {
+  function fb() { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+  if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt).catch(fb);
+  fb(); return Promise.resolve();
+}
+function postAtu(payload) {
+  return fetch(ATUACAO_WEBAPP_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ email: userEmail }, payload)) }).then(function (r) { return r.json(); });
+}
+// registra 1 atuação na aba Logs (via Dash_Atuacao.gs). cnpjs/status ficam no detalhe para a aba Atuação.
+function registrarAtu(acao, detalhe, cnpjs, st) {
+  let d = detalhe || '';
+  if (cnpjs && cnpjs.length) d += ' | cnpjs:' + cnpjs.join(',');
+  if (st) d += ' | st:' + st;
+  postAtu({ action: 'atuacao', acao: acao, detalhe: d }).catch(function () {});
+  logsBaseRows.unshift({ data: Date.now(), email: userEmail, acao: acao, detalhe: d });  // já aparece na aba Atuação sem recarregar
+}
+
+/* ---------- permissões extras (macro / Gestor) ---------- */
+async function carregarPermissoesExtras() {
+  const fixo = ATU_ADMIN.indexOf(userEmail) >= 0;
+  userPerm = { macro: fixo, gestor: fixo };
+  if (!fixo) {
+    try {
+      const res = await fetch(gvizUrl(AUTH_TAB), { cache: 'no-store' });
+      const rows = parseCSVGeneric(await res.text());
+      for (let i = 1; i < rows.length; i++) {
+        if ((rows[i][0] || '').trim().toLowerCase() !== userEmail) continue;
+        const cel = rows[i].slice(1).map(function (v) { return (v || '').trim().toLowerCase(); });
+        userPerm = { macro: cel.indexOf('macro') >= 0, gestor: cel.indexOf('gestor') >= 0 };
+        break;
+      }
+    } catch (e) {}
+  }
+  if (userPerm.gestor) {
+    document.getElementById('view-tabs').style.display = 'flex';
+    document.getElementById('tab-atuacao').style.display = '';
+    if (userRole !== 'ultra') ['tab-logs', 'tab-ranking', 'tab-evolucao', 'tab-disparos'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+  }
+  if (document.getElementById('ranking-view').style.display === 'block') renderGnRanking();
+}
+
+/* ---------- GN unificado (telefone + nome) ----------
+   1) chave = DDD + 8 últimos dígitos do Telefone GN; 2) nome sem acento/maiúscula liga as linhas também;
+   3) nome exibido = variação mais completa. Reescreve GN_NOME nas linhas (filtros, ranking, Excel usam o mesmo). */
+function unificarGnsReais(rows) {
+  const iNome = EXPOSED_HEADERS.indexOf('GN_NOME'), iTel = EXPOSED_HEADERS.indexOf('Telefone GN'), iMail = EXPOSED_HEADERS.indexOf('Email GN');
+  const iGp = EXPOSED_HEADERS.indexOf('GP_NOME'), iGpMail = EXPOSED_HEADERS.indexOf('Email GP');
+  const pai = rows.map(function (_, i) { return i; });
+  function f(i) { while (pai[i] !== i) { pai[i] = pai[pai[i]]; i = pai[i]; } return i; }
+  function ligar(chave) { const visto = {}; rows.forEach(function (r, i) { const k = chave(r); if (!k) return; if (visto[k] === undefined) visto[k] = i; else pai[f(i)] = f(visto[k]); }); }
+  ligar(function (r) { return telKeyAtu(r[iTel]); });
+  ligar(function (r) { const n = nomeKeyAtu(r[iNome]); return n && n !== '0' ? n : ''; });
+  ligar(function (r) { const n = nomeKeyAtu(r[iNome]); return (!n || n === '0') && !telKeyAtu(r[iTel]) ? String(r[iMail] || '').trim().toLowerCase() : ''; });
+  const grupos = {};
+  rows.forEach(function (r, i) { const g = f(i); (grupos[g] = grupos[g] || []).push(r); });
+  gnInfoById = {};
+  Object.keys(grupos).forEach(function (g) {
+    const rs = grupos[g], nomes = {}, emails = {}, tels = [];
+    rs.forEach(function (r) {
+      const n = String(r[iNome] || '').trim(); if (nomeKeyAtu(n) && nomeKeyAtu(n) !== '0') nomes[n] = (nomes[n] || 0) + 1;
+      const m = String(r[iMail] || '').trim().toLowerCase(); if (m.indexOf('@') > 0) emails[m] = (emails[m] || 0) + 1;
+      if (r[iTel]) tels.push(r[iTel]);
+    });
+    const lista = Object.keys(nomes).sort(function (a, b) {
+      return b.split(' ').length - a.split(' ').length || (/[^\x00-\x7F]/.test(b) ? 1 : 0) - (/[^\x00-\x7F]/.test(a) ? 1 : 0) || nomes[b] - nomes[a]; });
+    const vistos = {}; const variantes = [];
+    lista.forEach(function (n, i) { const k = nomeKeyAtu(n); if (i === 0 || vistos[k]) { vistos[k] = 1; return; } vistos[k] = 1; variantes.push(n); });
+    const id = rs.map(function (r) { return telKeyAtu(r[iTel]); }).filter(String)[0] || nomeKeyAtu(lista[0] || '') || ('mail:' + (Object.keys(emails)[0] || g));
+    const info = { id: id, nome: lista[0] || '(sem nome)', variantes: variantes, tels: tels,
+      email: Object.keys(emails).sort(function (a, b) { return emails[b] - emails[a]; })[0] || '' };
+    gnInfoById[id] = info;
+    rs.forEach(function (r) { r.gnId = id; r[iNome] = info.nome; });
+  });
+  const gpm = {};
+  rows.forEach(function (r) { const g = r[iGp], m = String(r[iGpMail] || '').trim().toLowerCase(); if (!g || m.indexOf('@') < 0) return; (gpm[g] = gpm[g] || {})[m] = (gpm[g][m] || 0) + 1; });
+  gpEmailByNome = {};
+  Object.keys(gpm).forEach(function (g) { gpEmailByNome[g] = Object.keys(gpm[g]).sort(function (a, b) { return gpm[g][b] - gpm[g][a]; })[0]; });
+}
+
+/* ---------- dados auxiliares: Ajustes_Contatos + último acesso (Logs) ---------- */
+async function carregarAjustes() {
+  try {
+    const res = await fetch(gvizUrl(AJUSTES_TAB, true), { cache: 'no-store' });
+    if (!res.ok) { ajustesRows = []; return; }
+    const objs = parseCSVToObjects(normalizaCsvGviz(await res.text()));
+    ajustesRows = objs.filter(function (o) { return o['Tipo'] && o['ID'] && o['Campo']; });
+  } catch (e) { ajustesRows = []; }
+}
+async function carregarLogsBase() {
+  try {
+    const res = await fetch(gvizUrl(LOGS_TAB), { cache: 'no-store' });
+    const rows = parseCSVGeneric(await res.text());
+    const h = (rows[0] || []).map(function (x) { return normalizeKey(x); });
+    const iD = h.indexOf('data'), iE = h.findIndex(function (x) { return x === 'e-mail' || x === 'email'; }), iA = h.indexOf('acao'), iT = h.indexOf('detalhe');
+    acessoPorEmail = {};
+    logsBaseRows = rows.slice(1).map(function (r) {
+      return { data: parseLogDate(r[iD]), email: String(r[iE] || '').trim().toLowerCase(), acao: String(r[iA] || '').trim(), detalhe: iT >= 0 ? String(r[iT] || '') : '' };
+    }).filter(function (r) { return r.email && r.data > 0; });
+    logsBaseRows.forEach(function (r) { if (r.acao === 'acesso' && (!acessoPorEmail[r.email] || r.data > acessoPorEmail[r.email])) acessoPorEmail[r.email] = r.data; });
+    logsBaseRows.sort(function (a, b) { return b.data - a.data; });
+  } catch (e) {}
+}
+function diasDesdeAcesso(email) {
+  const t = acessoPorEmail[String(email || '').toLowerCase()];
+  if (!t) return null;
+  const a = new Date(t); a.setHours(0, 0, 0, 0); const h = new Date(); h.setHours(0, 0, 0, 0);
+  return Math.round((h - a) / 864e5);
+}
+function accClass(d) { if (d === null || d === undefined || d > 7) return 'red'; if (d > 2) return 'mus'; return 'grn'; }
+function accRank(d) { return d === null || d === undefined ? 999 : d; }
+function accBadge(d) {
+  const txt = d === null || d === undefined ? 'Nunca acessou' : (d === 0 ? 'Hoje' : d === 1 ? 'Ontem' : 'há ' + d + ' dias');
+  return '<span class="badge b-' + accClass(d) + '">' + txt + '</span>';
+}
+
+/* ---------- contato efetivo (ajuste manual mais recente > planilha) ---------- */
+function ajusteAtual(tipo, id, campo) {
+  for (let i = ajustesRows.length - 1; i >= 0; i--) { const a = ajustesRows[i]; if (a['Tipo'] === tipo && a['ID'] === id && a['Campo'] === campo) return a; }
+  return null;
+}
+function contatoAtu(tipo, ref) {
+  let id, telBase, emailBase, nome;
+  if (tipo === 'GP') { nome = ref; id = nomeKeyAtu(ref); telBase = ''; emailBase = gpEmailByNome[ref] || ''; }
+  else { const g = gnInfoById[ref] || {}; nome = g.nome; id = ref; telBase = telWhatsAtu(g.tels); emailBase = g.email || ''; }
+  const aT = ajusteAtual(tipo, id, 'Telefone'), aE = ajusteAtual(tipo, id, 'E-mail');
+  return { tipo: tipo, id: id, ref: ref, nome: nome, tel: aT ? telWhatsAtu([aT['Depois']]) : telBase, email: aE ? aE['Depois'] : emailBase,
+    telManual: aT, emailManual: aE, telBase: telBase, emailBase: emailBase };
+}
+
+/* ---------- lojas ---------- */
+const I_ = function (h) { return EXPOSED_HEADERS.indexOf(h); };
+function lojaDe(row) {
+  const sem = isEstoqueCritico(row) === true;
+  const des = isEstoqueCritico(row) === false && normalizeKey(row[I_('Faixa de Atualização')]) !== 'ate 15 dias';
+  return { row: row, nome: row[I_('REV_NOME')], cnpj: cnpjKeyAtu(row[I_('REV_CNPJ')]), sem: sem, des: des, estoque: row[I_('Estoque')],
+    faixa: row[I_('Faixa de Atualização')], login: row[I_('Login')], senha: row[I_('Senha')], email: row[I_('Email Onboarding')], gnId: row.gnId, gp: row[I_('GP_NOME')] };
+}
+function limparSenhaOrigem(v) { const t = String(v === undefined || v === null ? '' : v); return t.indexOf('|') >= 0 ? t.split('|').pop().trim() : t; }
+function semSenhaAtu(s) { const v = String(s || '').trim().toLowerCase(); return !v || v === '-' || v === '--' || v.indexOf('resetar') >= 0; }
+function senhaTxtAtu(s) { return semSenhaAtu(s) ? 'resetar' : String(s).trim(); }
+
+/* ---------- textos ---------- */
+function topoDash() { return '📊 Acompanhe sua carteira em tempo real no Dash do Feirão:\n' + DASH_URL + '\n(entre com o seu e-mail)\n\n'; }
+function textoLojaAtu(l) {
+  const abre = l.sem
+    ? 'Olá, ' + l.nome + '! Seu estoque ainda não está publicado no Super Feirão. Publique agora para seus carros aparecerem para os clientes.'
+    : 'Olá, ' + l.nome + '! Seu estoque no Super Feirão está desatualizado. Atualize agora para os clientes verem os carros que você tem hoje.';
+  const senha = semSenhaAtu(l.senha) ? 'Senha: clique em "Esqueci minha senha" no painel e crie uma nova com o e-mail acima' : 'Senha: ' + String(l.senha).trim();
+  return abre + '\n\n' + (l.sem ? 'Publique' : 'Atualize') + ' pelo painel: ' + PAINEL_URL + '\nLogin: ' + l.login + '\n' + senha + '\n\nEsse mesmo acesso também serve para o integrador de estoque.';
+}
+function textoGnAtu(g) {
+  return topoDash() + 'Lojas sem estoque — ' + g.nome + ' (' + g.semLojas.length + ')\n\n' +
+    g.semLojas.map(function (l) { return 'Painel: ' + PAINEL_URL + '\n' + l.nome + '\n' + l.login + '\n' + senhaTxtAtu(l.senha); }).join('\n--------------------\n');
+}
+function textoGpAtu(gp) {
+  return topoDash() + 'Super Feirão — carteira ' + gp.nome + '\n' + gp.qTot + ' lojas, ' + gp.qSem + ' sem estoque\n\n' +
+    gp.gns.map(function (g) { return '• ' + g.nome + ' — ' + g.qTot + ' loja' + (g.qTot === 1 ? '' : 's') + ', ' + g.qSem + ' sem estoque'; }).join('\n');
+}
+
+/* ---------- monta a árvore ---------- */
+let rkGpList = [];
+function montarArvoreDados() {
+  const fAcc = document.getElementById('rk-acc').value;
+  const porGp = {};
+  getFilteredRows().forEach(function (row) {
+    const l = lojaDe(row);
+    const gpNome = l.gp || '(sem GP)';
+    const gp = porGp[gpNome] || (porGp[gpNome] = { nome: gpNome, gns: {} });
+    const g = gp.gns[l.gnId] || (gp.gns[l.gnId] = { id: l.gnId, nome: (gnInfoById[l.gnId] || {}).nome || row[I_('GN_NOME')], variantes: (gnInfoById[l.gnId] || {}).variantes || [], lojas: [] });
+    g.lojas.push(l);
+  });
+  rkGpList = Object.keys(porGp).map(function (k) {
+    const gp = porGp[k];
+    const cGp = contatoAtu('GP', gp.nome);
+    const gns = Object.keys(gp.gns).map(function (id) {
+      const g = gp.gns[id];
+      g.semLojas = g.lojas.filter(function (l) { return l.sem; });
+      g.desLojas = g.lojas.filter(function (l) { return l.des; });
+      g.qSem = g.semLojas.length; g.qDes = g.desLojas.length; g.qTot = g.lojas.length;
+      g.contato = contatoAtu('GN', id);
+      g.acesso = g.contato.email ? diasDesdeAcesso(g.contato.email) : null;
+      return g;
+    }).filter(function (g) { return !fAcc || accClass(g.acesso) === fAcc; });
+    gns.sort(function (a, b) { return b.qSem - a.qSem || accRank(b.acesso) - accRank(a.acesso) || a.nome.localeCompare(b.nome, 'pt-BR'); });
+    return { nome: gp.nome, gns: gns, contato: cGp, acesso: cGp.email ? diasDesdeAcesso(cGp.email) : null,
+      qSem: gns.reduce(function (s, g) { return s + g.qSem; }, 0), qDes: gns.reduce(function (s, g) { return s + g.qDes; }, 0), qTot: gns.reduce(function (s, g) { return s + g.qTot; }, 0) };
+  }).filter(function (gp) { return gp.gns.length; });
+  rkGpList.sort(function (a, b) { return b.qSem - a.qSem || accRank(b.acesso) - accRank(a.acesso); });
+}
+
+function renderGnRanking() {
+  montarArvoreDados();
+  const M = userPerm.macro;
+  const maxGp = Math.max.apply(null, rkGpList.map(function (g) { return g.qSem; }).concat([1]));
+  const maxGn = Math.max.apply(null, [].concat.apply([1], rkGpList.map(function (gp) { return gp.gns.map(function (g) { return g.qSem; }); })));
+  document.getElementById('rk-perm-note').textContent = M
+    ? '✅ Envio por e-mail, lápis de contato e seleção em lote liberados' + (ATU_ADMIN.indexOf(userEmail) >= 0 ? ' (fixo no código)' : ' ("macro")')
+    : '🔒 Sem "macro": copiar, WhatsApp e telefone';
+  function qtyCell(q, max, tot, des) {
+    const t = (tot ? Math.round(q / tot * 100) : 0) + '% da carteira' + (des ? ' · mais ' + des + ' desatualizada' + (des > 1 ? 's' : '') : '');
+    return '<td class="num" title="' + t + '"><div class="qty"><div class="bar"><span style="width:' + (q / max * 100) + '%"></span></div><b>' + q + '</b>' +
+      (des ? '<span class="des-chip" title="' + des + ' com estoque desatualizado">+' + des + '</span>' : '<span class="des-chip vazio"></span>') + '</div></td>';
+  }
+  function ckGrupo(lojas) {
+    if (!lojas.length) return '<input type="checkbox" class="ck" disabled>';
+    const marc = lojas.filter(function (l) { return rkSelecionadas.has(l.cnpj); }).length;
+    return '<input type="checkbox" class="ck" data-grupo="' + lojas.map(function (l) { return l.cnpj; }).join(',') + '"' + (marc === lojas.length ? ' checked' : '') + (marc > 0 && marc < lojas.length ? ' data-ind="1"' : '') + '>';
+  }
+  function contatoLinha(c) {
+    const man = '<span class="man-tag" title="Ajustado à mão">✎</span>';
+    const tel = c.tel ? '<button class="tel-link" data-tel-copy="' + c.tipo + '" data-ref="' + atuEsc(c.ref) + '" data-tel="' + c.tel + '" title="Copiar número para ligar">📞 ' + telFmtAtu(c.tel) + '</button>' : '<span class="tel-link vazio">sem telefone</span>';
+    const mail = c.email ? '<span>' + atuEsc(c.email) + '</span>' : '<span class="tel-link vazio">sem e-mail</span>';
+    return tel + (c.telManual ? man : '') + ' · ' + mail + (c.emailManual ? man : '') +
+      (M ? '<button class="pencil" data-edit="' + c.tipo + '" data-ref="' + atuEsc(c.ref) + '" title="Incluir ou corrigir telefone/e-mail">✏️</button>' : '');
+  }
+  function acoes(tipo, ref, c, temLojas) {
+    return '<div class="row-actions">' +
+      (c.tel ? '<button class="icon-btn wa" data-wa="' + tipo + '" data-ref="' + atuEsc(ref) + '" data-tel="' + c.tel + '" title="Abrir no WhatsApp Web">' + ICON_WA + '</button>'
+             : '<button class="icon-btn wa" disabled title="Sem telefone — use o ✏️ para incluir">' + ICON_WA + '</button>') +
+      '<button class="btn btn-sm btn-secondary" data-menu="' + tipo + '" data-ref="' + atuEsc(ref) + '"' + (temLojas ? '' : ' disabled') + '>Copiar ▾</button>' +
+      (M ? '<button class="icon-btn" data-mail="' + tipo + '" data-ref="' + atuEsc(ref) + '"' + (temLojas && c.email ? '' : ' disabled') + ' title="' + (c.email ? 'Enviar por e-mail' : 'Sem e-mail — use o ✏️') + '">✉</button>' : '') +
+    '</div>';
+  }
+  let html = '', first = true, totGn = 0;
+  rkGpList.forEach(function (gp, gi) {
+    const kGp = 'gp:' + gp.nome, gpOpen = !!rkAbertos[kGp];
+    totGn += gp.gns.length;
+    if (!first) html += '<tr class="gap"><td colspan="5"></td></tr>';
+    first = false;
+    html += '<tr class="gp"><td><div class="nome-cel">' + (M ? ckGrupo([].concat.apply([], gp.gns.map(function (g) { return g.semLojas; }))) : '') +
+      '<button class="arrow' + (gpOpen ? ' open' : '') + '" data-k="' + atuEsc(kGp) + '">▶</button><span class="lvl">GP</span>' +
+      '<div><div class="nome">' + atuEsc(gp.nome) + '</div><div class="sub-linha">' + gp.gns.length + ' GNs · ' + contatoLinha(gp.contato) + '</div></div></div></td>' +
+      qtyCell(gp.qSem, maxGp, gp.qTot, gp.qDes) + '<td class="num">' + gp.qTot + '</td><td>' + accBadge(gp.acesso) + '</td>' +
+      '<td>' + acoes('GP', gp.nome, gp.contato, gp.qTot > 0) + '</td></tr>';
+    if (!gpOpen) return;
+    gp.gns.forEach(function (g) {
+      const kGn = 'gn:' + g.id, gnOpen = !!rkAbertos[kGn];
+      html += '<tr class="gn acc-' + accClass(g.acesso) + '"><td><div class="nome-cel">' + (M ? ckGrupo(g.semLojas) : '') +
+        '<button class="arrow' + (gnOpen ? ' open' : '') + '" data-k="' + atuEsc(kGn) + '">▶</button><span class="lvl">GN</span>' +
+        '<div><div class="nome">' + atuEsc(g.nome) + (g.variantes.length ? ' <span class="info" title="Também aparece na planilha como: ' + atuEsc(g.variantes.join(' · ')) + '">ⓘ</span>' : '') + '</div>' +
+        '<div class="sub-linha">' + contatoLinha(g.contato) + '</div></div></div></td>' +
+        qtyCell(g.qSem, maxGn, g.qTot, g.qDes) + '<td class="num">' + g.qTot + '</td><td>' + accBadge(g.acesso) + '</td>' +
+        '<td>' + acoes('GN', g.id, g.contato, g.qSem > 0) + '</td></tr>';
+      if (!gnOpen) return;
+      const lojas = g.semLojas.concat(g.desLojas);
+      if (!lojas.length) { html += '<tr class="loja"><td colspan="5" style="color:var(--muted)">Nenhuma loja sem estoque ou desatualizada 🎉</td></tr>'; return; }
+      lojas.forEach(function (l) {
+        const s = senhaTxtAtu(l.senha);
+        html += '<tr class="loja"><td><div class="nome-cel">' + (M ? '<input type="checkbox" class="ck" data-cnpj="' + l.cnpj + '"' + (rkSelecionadas.has(l.cnpj) ? ' checked' : '') + '>' : '') +
+          '<div><div>' + atuEsc(l.nome) + '</div><div class="sub-linha mono">' + atuEsc(l.login) + ' · <span class="' + (s === 'resetar' ? 'reset-txt' : '') + '">' + atuEsc(s) + '</span></div></div></div></td>' +
+          '<td class="num">' + (l.sem ? '<span class="badge b-sem">Sem estoque</span>' : '<span class="badge b-des" title="' + atuEsc(l.faixa) + '">Desatualizado</span>') + '</td>' +
+          '<td class="num" style="color:var(--muted)">' + (l.sem ? '' : atuEsc(l.estoque) + ' carros') + '</td><td></td>' +
+          '<td><div class="row-actions"><button class="btn btn-sm btn-secondary" data-copy-loja="' + l.cnpj + '" title="Mensagem + login, senha e link do painel">📋 Copiar</button>' +
+          (M ? '<button class="icon-btn" data-mail="LOJA" data-ref="' + l.cnpj + '"' + (/@/.test(l.email) ? '' : ' disabled') + ' title="Enviar à loja pelo seu e-mail">✉</button>' : '') +
+          '</div></td></tr>';
+      });
+    });
+  });
+  document.getElementById('rk-body').innerHTML = html || '<tr><td colspan="5" style="color:var(--muted)">Nenhum GN com esses filtros.</td></tr>';
+  document.getElementById('ranking-results-count').textContent = rkGpList.length + ' GP(s) · ' + totGn + ' GN(s) — ordem: mais lojas sem estoque primeiro; empate → quem acessa menos o Dash primeiro. Segue os filtros acima.';
+  document.querySelectorAll('#rk-body .ck[data-ind]').forEach(function (c) { c.indeterminate = true; });
+  atualizarBatchBar();
+}
+
+function acharGpRk(nome) { return rkGpList.find(function (g) { return g.nome === nome; }); }
+function acharGnRk(id) { for (const gp of rkGpList) for (const g of gp.gns) if (g.id === id) return g; return null; }
+function acharLojaAtu(cnpj) { const row = allRows.find(function (r) { return cnpjKeyAtu(r[I_('REV_CNPJ')]) === cnpj; }); return row ? lojaDe(row) : null; }
+
+/* ---------- cliques da árvore ---------- */
+let popCtx = null;
+function fecharPop() { document.getElementById('pop-copiar').classList.remove('open'); popCtx = null; }
+document.addEventListener('click', function (e) { if (!e.target.closest('#pop-copiar') && !e.target.closest('[data-menu]')) fecharPop(); });
+window.addEventListener('scroll', fecharPop, true);
+document.getElementById('rk-body').addEventListener('click', function (e) {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.dataset.menu) {
+    const p = document.getElementById('pop-copiar');
+    if (popCtx && popCtx.btn === b) { fecharPop(); return; }
+    const r = b.getBoundingClientRect();
+    p.style.top = (r.bottom + 4) + 'px'; p.style.left = Math.max(8, r.right - 170) + 'px';
+    p.classList.add('open'); popCtx = { btn: b, tipo: b.dataset.menu, ref: b.dataset.ref };
+    return;
+  }
+  fecharPop();
+  if (b.dataset.k) { rkAbertos[b.dataset.k] = !rkAbertos[b.dataset.k]; renderGnRanking(); return; }
+  if (b.dataset.edit) { abrirEdicaoAtu(b.dataset.edit, b.dataset.ref); return; }
+  if (b.dataset.telCopy) {
+    copiarAtu(telFmtAtu(b.dataset.tel));
+    registrarAtu('copiar_telefone_' + b.dataset.telCopy.toLowerCase(), b.dataset.telCopy + ' ' + nomeRefAtu(b.dataset.telCopy, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.telCopy, b.dataset.ref), b.dataset.telCopy === 'GN' ? 'sem' : '');
+    const old = b.textContent; b.textContent = '✔ copiado'; setTimeout(function () { b.textContent = old; }, 1400); return;
+  }
+  if (b.dataset.wa) {
+    window.open('https://web.whatsapp.com/send?phone=' + b.dataset.tel, 'whatsapp_web');
+    registrarAtu('whatsapp_' + b.dataset.wa.toLowerCase(), b.dataset.wa + ' ' + nomeRefAtu(b.dataset.wa, b.dataset.ref) + ' · +' + b.dataset.tel, cnpjsDoRef(b.dataset.wa, b.dataset.ref), b.dataset.wa === 'GN' ? 'sem' : '');
+    return;
+  }
+  if (b.dataset.copyLoja) {
+    const l = acharLojaAtu(b.dataset.copyLoja); if (!l) return;
+    copiarAtu(textoLojaAtu(l));
+    registrarAtu('copiar_mensagem_loja', l.cnpj + ' - ' + l.nome, [l.cnpj], l.sem ? 'sem' : 'des');
+    const old = b.textContent; b.textContent = '✔ Copiado'; setTimeout(function () { b.textContent = old; }, 1400); return;
+  }
+  if (b.dataset.mail) abrirMailAtu(b.dataset.mail, b.dataset.ref);
+});
+function nomeRefAtu(tipo, ref) { return tipo === 'GP' ? ref : ((gnInfoById[ref] || {}).nome || ref); }
+// GN: as lojas sem estoque dele contam como atuadas; GP: nenhuma loja (ação de acompanhamento)
+function cnpjsDoRef(tipo, ref) { if (tipo !== 'GN') return []; const g = acharGnRk(ref); return g ? g.semLojas.map(function (l) { return l.cnpj; }) : []; }
+document.getElementById('pop-copiar').addEventListener('click', function (e) {
+  const b = e.target.closest('button'); if (!b || !popCtx) return;
+  const ctx = popCtx; fecharPop();
+  if (ctx.tipo === 'GP') {
+    const gp = acharGpRk(ctx.ref); if (!gp) return;
+    if (b.dataset.pop === 'txt') { copiarAtu(textoGpAtu(gp)); registrarAtu('copiar_resumo_gp', 'GP ' + gp.nome + ' · texto'); toastAtu('Resumo do GP copiado'); }
+    else abrirImagemAtu(dadosImagemGp(gp));
+  } else {
+    const g = acharGnRk(ctx.ref); if (!g) return;
+    if (b.dataset.pop === 'txt') { copiarAtu(textoGnAtu(g)); registrarAtu('copiar_credenciais_gn', 'GN ' + g.nome + ' · ' + g.qSem + ' lojas · texto', g.semLojas.map(function (l) { return l.cnpj; }), 'sem'); toastAtu('Lojas do GN copiadas'); }
+    else abrirImagemAtu(dadosImagemGn(g));
+  }
+});
+document.getElementById('rk-body').addEventListener('change', function (e) {
+  const c = e.target; if (!c.classList.contains('ck')) return;
+  const ids = c.dataset.cnpj ? [c.dataset.cnpj] : c.dataset.grupo.split(',');
+  ids.forEach(function (id) { if (c.checked) rkSelecionadas.add(id); else rkSelecionadas.delete(id); });
+  renderGnRanking();
+});
+document.getElementById('rk-acc').addEventListener('change', renderGnRanking);
+document.getElementById('rk-expand').addEventListener('click', function () {
+  rkGpList.forEach(function (gp) { rkAbertos['gp:' + gp.nome] = true; gp.gns.forEach(function (g) { rkAbertos['gn:' + g.id] = true; }); }); renderGnRanking();
+});
+document.getElementById('rk-collapse').addEventListener('click', function () { Object.keys(rkAbertos).forEach(function (k) { rkAbertos[k] = false; }); renderGnRanking(); });
+
+/* ---------- e-mail individual (pelo e-mail de quem clica) ---------- */
+let mailCtxAtu = null;
+function abrirMailAtu(tipo, ref) {
+  let to, cc = '', subj, body, sub, acao, det, cnpjs = [], st = '';
+  if (tipo === 'LOJA') {
+    const l = acharLojaAtu(ref); if (!l) return;
+    to = l.email; cc = contatoAtu('GN', l.gnId).email;
+    subj = l.sem ? 'Super Feirão | Seu Estoque Ainda Não Foi Publicado - Publique Agora' : 'Super Feirão | Seu Estoque Está Desatualizado - Atualize Agora';
+    body = textoLojaAtu(l); sub = 'Loja ' + l.nome + (cc ? ' · GN em cópia' : '');
+    acao = 'enviar_credenciais_loja'; det = l.cnpj + ' - ' + l.nome; cnpjs = [l.cnpj]; st = l.sem ? 'sem' : 'des';
+  } else if (tipo === 'GN') {
+    const g = acharGnRk(ref); if (!g) return;
+    to = g.contato.email;
+    subj = 'Super Feirão | ' + g.qSem + ' loja(s) da sua carteira sem estoque';
+    body = 'Olá, ' + g.nome.split(' ')[0] + '! Estas lojas da sua carteira ainda estão sem estoque publicado. Cada bloco já tem o link do painel e o acesso da loja — é só copiar e mandar para ela.\n\n' + textoGnAtu(g);
+    sub = 'GN ' + g.nome + ' · ' + g.qSem + ' lojas'; acao = 'enviar_credenciais_gn'; det = 'GN ' + g.nome + ' · ' + g.qSem + ' lojas';
+    cnpjs = g.semLojas.map(function (l) { return l.cnpj; }); st = 'sem';
+  } else {
+    const gp = acharGpRk(ref); if (!gp) return;
+    to = gp.contato.email;
+    subj = 'Super Feirão | Resumo da sua carteira — ' + gp.qSem + ' loja(s) sem estoque';
+    body = 'Olá, ' + gp.nome.split(' ')[0] + '! Segue o resumo da sua carteira no Super Feirão.\n\n' + textoGpAtu(gp);
+    sub = 'GP ' + gp.nome + ' · ' + gp.gns.length + ' GNs'; acao = 'enviar_resumo_gp'; det = 'GP ' + gp.nome;
+  }
+  mailCtxAtu = { cc: cc, acao: acao, det: det, cnpjs: cnpjs, st: st };
+  document.getElementById('mail-sub').textContent = sub;
+  document.getElementById('mail-to').value = to || '';
+  document.getElementById('mail-subject').value = subj;
+  document.getElementById('mail-body').value = body;
+  document.getElementById('mail-modal').classList.add('open');
+}
+document.getElementById('mail-cancel').addEventListener('click', function () { document.getElementById('mail-modal').classList.remove('open'); });
+document.getElementById('mail-copy').addEventListener('click', function () { copiarAtu(document.getElementById('mail-body').value); toastAtu('Texto copiado'); });
+document.getElementById('mail-send').addEventListener('click', function () {
+  const to = document.getElementById('mail-to').value.trim(), s = document.getElementById('mail-subject').value, b = document.getElementById('mail-body').value;
+  const head = 'mailto:' + encodeURIComponent(to) + '?' + (mailCtxAtu.cc ? 'cc=' + encodeURIComponent(mailCtxAtu.cc) + '&' : '') + 'subject=' + encodeURIComponent(s);
+  const url = head + '&body=' + encodeURIComponent(b);
+  registrarAtu(mailCtxAtu.acao, mailCtxAtu.det, mailCtxAtu.cnpjs, mailCtxAtu.st);
+  if (url.length > 1900) { copiarAtu(b); toastAtu('Texto grande: o e-mail abre sem o corpo — o texto já foi copiado, é só colar.'); window.location.href = head; }
+  else window.location.href = url;
+  document.getElementById('mail-modal').classList.remove('open');
+});
+
+/* ---------- seleção e envio em lote (Dash_Atuacao.gs) ---------- */
+function atualizarBatchBar() {
+  const n = rkSelecionadas.size;
+  document.getElementById('batch-n').textContent = n + (n === 1 ? ' loja' : ' lojas');
+  const visivel = n > 0 && userPerm.macro && document.getElementById('ranking-view').style.display === 'block';
+  document.getElementById('batch-bar').classList.toggle('show', visivel);
+}
+function lojasSelecionadas() { return Array.from(rkSelecionadas).map(acharLojaAtu).filter(Boolean); }
+document.getElementById('batch-clear').addEventListener('click', function () { rkSelecionadas.clear(); renderGnRanking(); });
+document.getElementById('batch-copy').addEventListener('click', function () {
+  const ls = lojasSelecionadas();
+  copiarAtu(ls.map(textoLojaAtu).join('\n\n--------------------\n\n'));
+  registrarAtu('copiar_mensagem_lote', ls.length + ' lojas', ls.map(function (l) { return l.cnpj; }), 'sem');
+  toastAtu(ls.length + ' mensagem(ns) copiada(s)');
+});
+document.getElementById('batch-mail').addEventListener('click', function () {
+  const ls = lojasSelecionadas();
+  const semEmail = ls.filter(function (l) { return !/@/.test(l.email) && !/@/.test(l.login); }).length;
+  document.getElementById('lote-sub').textContent = ls.length + ' loja(s) · ' + ls.filter(function (l) { return l.sem; }).length + ' sem estoque, ' +
+    ls.filter(function (l) { return !l.sem; }).length + ' com estoque · ' + ls.filter(function (l) { return semSenhaAtu(l.senha); }).length + ' sem senha';
+  document.getElementById('lote-list').innerHTML = ls.map(function (l) {
+    return '<div><span>' + atuEsc(l.nome) + ' <span class="badge ' + (l.sem ? 'b-sem' : 'b-des') + '">' + (l.sem ? 'sem estoque' : 'desatualizado') + '</span></span><span class="sub-linha mono">' + atuEsc(l.email || l.login) + '</span></div>';
+  }).join('') + (semEmail ? '<div class="warn">' + semEmail + ' sem e-mail — ficam de fora</div>' : '');
+  document.getElementById('lote-eu').textContent = userEmail;
+  document.getElementById('lote-erro').textContent = '';
+  const btn = document.getElementById('lote-send'); btn.disabled = false; btn.textContent = 'Enviar ' + (ls.length - semEmail) + ' e-mail(s)';
+  document.getElementById('lote-modal').classList.add('open');
+});
+document.getElementById('lote-cancel').addEventListener('click', function () { document.getElementById('lote-modal').classList.remove('open'); });
+document.getElementById('lote-send').addEventListener('click', function () {
+  const btn = this, cnpjs = Array.from(rkSelecionadas);
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Enviando...';
+  postAtu({ action: 'enviar_lote', cnpjs: cnpjs, ccGn: document.getElementById('lote-cc').checked }).then(function (res) {
+    if (!res.ok) { document.getElementById('lote-erro').textContent = 'Não enviou: ' + (res.error || 'erro'); btn.disabled = false; btn.textContent = 'Tentar de novo'; return; }
+    document.getElementById('lote-modal').classList.remove('open');
+    atuDadosCarregados = false;   // a aba Atuação relê a Disparos_realizados_email na próxima abertura
+    rkSelecionadas.clear(); renderGnRanking();
+    toastAtu(res.enviados + ' e-mail(s) enviado(s)' + (res.falhas ? ' · ' + res.falhas + ' falha(s)' : ''),
+      (res.pulados && res.pulados.length ? res.pulados.length + ' pulada(s): ' + res.pulados.slice(0, 3).join('; ') : 'Registrado em Disparos_realizados_email'));
+  }).catch(function () { document.getElementById('lote-erro').textContent = 'Falha de conexão. Tente de novo.'; btn.disabled = false; btn.textContent = 'Tentar de novo'; });
+});
+
+/* ---------- lápis: incluir/corrigir contato ---------- */
+let editCtxAtu = null;
+function abrirEdicaoAtu(tipo, ref) {
+  const c = contatoAtu(tipo, ref);
+  editCtxAtu = c;
+  document.getElementById('edit-title').textContent = tipo + ' ' + c.nome;
+  document.getElementById('edit-tel').value = c.tel ? telFmtAtu(c.tel) : '';
+  document.getElementById('edit-email').value = c.email || '';
+  function orig(base, man, fmt) {
+    if (man) return '✎ ajustado por ' + atuEsc(man['Quem']) + ' em ' + atuEsc(man['Data']) + ' · na planilha: ' + (base ? atuEsc(fmt(base)) : 'vazio');
+    return base ? 'Vem da planilha (Base_lojas)' : 'Não existe na planilha';
+  }
+  document.getElementById('edit-tel-orig').innerHTML = orig(c.telBase, c.telManual, telFmtAtu);
+  document.getElementById('edit-email-orig').innerHTML = orig(c.emailBase, c.emailManual, function (v) { return v; });
+  document.getElementById('edit-erro').textContent = '';
+  const hist = ajustesRows.filter(function (a) { return a['Tipo'] === tipo && a['ID'] === c.id; }).slice(-5).reverse();
+  document.getElementById('edit-hist').innerHTML = hist.length ? '<div class="lote-list">' + hist.map(function (a) {
+    return '<div><span>' + atuEsc(a['Data']) + ' · ' + atuEsc(a['Campo']) + '</span><span class="sub-linha mono">' + atuEsc(a['Antes'] || 'vazio') + ' → ' + atuEsc(a['Depois']) + ' · ' + atuEsc(String(a['Quem']).split('@')[0]) + '</span></div>'; }).join('') + '</div>' : '';
+  const btn = document.getElementById('edit-save'); btn.disabled = false; btn.textContent = 'Salvar';
+  document.getElementById('edit-modal').classList.add('open');
+}
+document.getElementById('edit-cancel').addEventListener('click', function () { document.getElementById('edit-modal').classList.remove('open'); });
+document.getElementById('edit-save').addEventListener('click', function () {
+  const c = editCtxAtu, btn = this;
+  const telIn = document.getElementById('edit-tel').value.trim(), mailIn = document.getElementById('edit-email').value.trim().toLowerCase();
+  const telNovo = telIn ? telWhatsAtu([telIn]) : '';
+  const erro = document.getElementById('edit-erro');
+  if (telIn && !telNovo) { erro.textContent = 'Telefone inválido: use DDD + número (10 ou 11 dígitos).'; return; }
+  if (mailIn && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailIn)) { erro.textContent = 'E-mail inválido.'; return; }
+  const payload = { action: 'ajuste_contato', tipo: c.tipo, id: c.id, nome: c.nome };
+  if (telIn && telNovo !== c.tel) { payload.telefone = telNovo; payload.telefoneAntes = c.tel || ''; }
+  if (mailIn && mailIn !== (c.email || '').toLowerCase()) { payload.emailNovo = mailIn; payload.emailAntes = c.email || ''; }
+  if (!payload.telefone && !payload.emailNovo) { document.getElementById('edit-modal').classList.remove('open'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Salvando...';
+  postAtu(payload).then(function (res) {
+    if (!res.ok) { erro.textContent = 'Não salvou: ' + (res.error || 'erro'); btn.disabled = false; btn.textContent = 'Salvar'; return; }
+    const quando = hojeBr();
+    if (payload.telefone) ajustesRows.push({ 'Data': quando, 'Quem': userEmail, 'Tipo': c.tipo, 'ID': c.id, 'Nome': c.nome, 'Campo': 'Telefone', 'Antes': payload.telefoneAntes, 'Depois': payload.telefone });
+    if (payload.emailNovo) ajustesRows.push({ 'Data': quando, 'Quem': userEmail, 'Tipo': c.tipo, 'ID': c.id, 'Nome': c.nome, 'Campo': 'E-mail', 'Antes': payload.emailAntes, 'Depois': payload.emailNovo });
+    document.getElementById('edit-modal').classList.remove('open');
+    renderGnRanking();
+    toastAtu('Contato salvo', c.tipo + ' ' + c.nome + ' · aba Ajustes_Contatos');
+  }).catch(function () { erro.textContent = 'Falha de conexão. Tente de novo.'; btn.disabled = false; btn.textContent = 'Salvar'; });
+});
+
+/* ---------- resumo em imagem (GP e GN) ---------- */
+function desenharCartaoAtu(d) {
+  const S = 2, W = 760, PAD = 32, ROW = 46, HEAD = 190, TH = 34;
+  const H = HEAD + TH + d.linhas.length * ROW + 74;
+  const c = document.createElement('canvas'); c.width = W * S; c.height = H * S;
+  const x = c.getContext('2d'); x.scale(S, S);
+  const F = function (w, sz, fam) { return w + ' ' + sz + 'px ' + (fam || 'Inter, "Segoe UI", Arial, sans-serif'); };
+  const MONO = '"IBM Plex Mono", Consolas, monospace', DISP = '"Space Grotesk", Inter, Arial, sans-serif';
+  function rr(px, py, w, h, r, fill) { x.beginPath(); x.moveTo(px + r, py); x.arcTo(px + w, py, px + w, py + h, r); x.arcTo(px + w, py + h, px, py + h, r); x.arcTo(px, py + h, px, py, r); x.arcTo(px, py, px + w, py, r); x.closePath(); x.fillStyle = fill; x.fill(); }
+  function cortar(t, max) { t = String(t); if (x.measureText(t).width <= max) return t; while (t.length && x.measureText(t + '…').width > max) t = t.slice(0, -1); return t + '…'; }
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+  x.fillStyle = '#0B0C10'; x.fillRect(0, 0, W, HEAD - 40);
+  x.fillStyle = '#A9822C'; x.font = F('600', 12, MONO); x.fillText('SUPER FEIRÃO · USADOSBR · ' + formatDateBrFull(new Date()), PAD, 38);
+  x.fillStyle = '#FFFFFF'; x.font = F('700', 26, DISP); x.fillText(cortar(d.titulo, W - 2 * PAD), PAD, 74);
+  x.fillStyle = '#B0B5BE'; x.font = F('400', 14); x.fillText(d.subtitulo, PAD, 100);
+  const cw = (W - 2 * PAD - 24) / 3, cy = HEAD - 62;
+  d.cards.forEach(function (k, i) {
+    const cx = PAD + i * (cw + 12);
+    rr(cx, cy, cw, 66, 10, '#FFFFFF'); x.strokeStyle = '#DFE3E9'; x.lineWidth = 1; x.stroke();
+    x.fillStyle = k[2]; x.fillRect(cx, cy + 10, 4, 46);
+    x.fillStyle = '#6B7280'; x.font = F('600', 11, MONO); x.fillText(k[0].toUpperCase(), cx + 16, cy + 24);
+    x.fillStyle = k[2]; x.font = F('700', 26, DISP); x.fillText(String(k[1]), cx + 16, cy + 54);
+  });
+  let y = HEAD + 10;
+  x.fillStyle = '#F2F4F7'; x.fillRect(PAD, y, W - 2 * PAD, TH);
+  x.fillStyle = '#6B7280'; x.font = F('600', 11, MONO);
+  d.colunas.forEach(function (col) { x.textAlign = col.align || 'left'; x.fillText(col.t, col.x, y + 22); });
+  x.textAlign = 'left'; y += TH;
+  d.linhas.forEach(function (lin, i) {
+    if (i % 2) { x.fillStyle = '#FAFBFC'; x.fillRect(PAD, y, W - 2 * PAD, ROW); }
+    lin.forEach(function (cel, j) {
+      const col = d.colunas[j];
+      if (cel.bar) { rr(col.x, y + 19, cel.w, 8, 4, '#EDEEF0'); if (cel.v) rr(col.x, y + 19, Math.max(8, cel.w * cel.v), 8, 4, '#D16A75'); return; }
+      x.textAlign = col.align || 'left'; x.fillStyle = cel.cor || '#14151A'; x.font = F(cel.peso || '500', cel.tam || 15, cel.fam);
+      x.fillText(col.max ? cortar(cel.t, col.max) : cel.t, col.x, y + 29);
+    });
+    x.textAlign = 'left';
+    x.fillStyle = '#EEF0F3'; x.fillRect(PAD, y + ROW - 1, W - 2 * PAD, 1);
+    y += ROW;
+  });
+  x.fillStyle = '#6B7280'; x.font = F('400', 12);
+  x.fillText(d.rodape, PAD, H - 30);
+  return c;
+}
+function dadosImagemGp(gp) {
+  const W = 760, PAD = 32;
+  const lista = gp.gns.slice().sort(function (a, b) { return b.qSem - a.qSem || b.qTot - a.qTot; });
+  const maxQ = Math.max.apply(null, lista.map(function (g) { return g.qSem; }).concat([1]));
+  return { nome: gp.nome, texto: textoGpAtu(gp), acaoImg: 'copiar_imagem_gp', acaoTxt: 'copiar_resumo_gp', det: 'GP ' + gp.nome + ' · ' + lista.length + ' GNs', cnpjs: [], st: '',
+    titulo: 'Carteira ' + gp.nome, subtitulo: lista.length + ' GNs · acompanhe no Dash: ' + DASH_URL.replace('https://', ''),
+    cards: [['Lojas', gp.qTot, '#33517A'], ['Sem estoque', gp.qSem, '#B23A48'], ['Desatualizadas', gp.qDes, '#A9822C']],
+    colunas: [{ t: 'GN', x: PAD + 12, max: 350 }, { t: 'LOJAS', x: 490, align: 'right' }, { t: '', x: 520 }, { t: 'SEM ESTOQUE', x: W - PAD - 12, align: 'right' }],
+    linhas: lista.map(function (g) { return [
+      { t: g.nome, peso: '600' }, { t: String(g.qTot), cor: '#6B7280' }, { bar: true, w: 120, v: g.qSem / maxQ },
+      { t: g.qSem ? String(g.qSem) : '✓ 0', cor: g.qSem ? '#B23A48' : '#2E8B57', peso: '700', tam: 17, fam: '"Space Grotesk", Inter, Arial, sans-serif' }]; }),
+    rodape: 'Painel para publicar/atualizar: console.usadosbr.com/painel-revenda' };
+}
+function dadosImagemGn(g) {
+  const W = 760, PAD = 32, MONO = '"IBM Plex Mono", Consolas, monospace';
+  return { nome: g.nome, texto: textoGnAtu(g), acaoImg: 'copiar_imagem_gn', acaoTxt: 'copiar_credenciais_gn', det: 'GN ' + g.nome + ' · ' + g.qSem + ' lojas',
+    cnpjs: g.semLojas.map(function (l) { return l.cnpj; }), st: 'sem',
+    titulo: g.nome, subtitulo: 'Acompanhe sua carteira no Dash: ' + DASH_URL.replace('https://', ''),
+    cards: [['Lojas', g.qTot, '#33517A'], ['Sem estoque', g.qSem, '#B23A48'], ['Desatualizadas', g.qDes, '#A9822C']],
+    colunas: [{ t: 'LOJA', x: PAD + 12, max: 250 }, { t: 'LOGIN', x: 300, max: 270 }, { t: 'SENHA', x: W - PAD - 12, align: 'right' }],
+    linhas: g.semLojas.map(function (l) { const s = senhaTxtAtu(l.senha); return [
+      { t: l.nome, peso: '600' }, { t: l.login, fam: MONO, tam: 13, cor: '#33517A' },
+      { t: s, fam: MONO, tam: 13, peso: s === 'resetar' ? '700' : '500', cor: s === 'resetar' ? '#B23A48' : '#14151A' }]; }),
+    rodape: 'Painel: console.usadosbr.com/painel-revenda · sem senha = "Esqueci minha senha" no painel' };
+}
+let imgAtualAtu = null;
+function abrirImagemAtu(d) {
+  const go = function () {
+    imgAtualAtu = Object.assign({ canvas: desenharCartaoAtu(d) }, d);
+    document.getElementById('img-title').textContent = d.titulo;
+    document.getElementById('img-prev').src = imgAtualAtu.canvas.toDataURL('image/png');
+    document.getElementById('img-modal').classList.add('open');
+  };
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
+}
+document.getElementById('img-close').addEventListener('click', function () { document.getElementById('img-modal').classList.remove('open'); });
+document.getElementById('img-texto').addEventListener('click', function () { const d = imgAtualAtu; copiarAtu(d.texto); registrarAtu(d.acaoTxt, d.det + ' · texto', d.cnpjs, d.st); toastAtu('Texto copiado'); });
+document.getElementById('img-baixar').addEventListener('click', function () {
+  const d = imgAtualAtu, a = document.createElement('a'); a.href = d.canvas.toDataURL('image/png');
+  a.download = 'resumo_' + nomeKeyAtu(d.nome).replace(/ /g, '_') + '_' + dateKey(new Date()) + '.png'; a.click();
+  registrarAtu(d.acaoImg.replace('copiar', 'baixar'), d.det, d.cnpjs, d.st);
+});
+document.getElementById('img-copiar').addEventListener('click', function () {
+  const d = imgAtualAtu;
+  d.canvas.toBlob(function (blob) {
+    if (navigator.clipboard && window.ClipboardItem) {
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(function () {
+        registrarAtu(d.acaoImg, d.det, d.cnpjs, d.st); toastAtu('Imagem copiada — cole no WhatsApp com Ctrl+V');
+      }, function () { toastAtu('O navegador bloqueou copiar imagem — use "Baixar PNG".'); });
+    } else toastAtu('Este navegador não copia imagem — use "Baixar PNG".');
+  }, 'image/png');
+});
+
+/* ---------- ao abrir o Ranking: carrega acessos e ajustes uma vez ---------- */
+let rkAuxCarregado = false;
+async function abrirRankingAtu() {
+  renderGnRanking();
+  if (!rkAuxCarregado) {
+    rkAuxCarregado = true;
+    await Promise.all([carregarAjustes(), carregarLogsBase()]);
+    renderGnRanking();
+  }
+}
+
+/* =================== ABA ATUAÇÃO x ESTOQUE (só "Gestor") =================== */
+const ACOES_ATUACAO = /^(copiar_|baixar_|whatsapp_|enviar_credenciais|enviar_resumo|resetar_senha)/;
+function equipeDe(email) { return /@usadosbr\.com$/i.test(String(email).trim()) ? 'Usadosbr' : 'C6'; }
+let chAtuDia = null, chAtuTaxa = null;
+function atuacoesDoLog() {
+  // 1 item por ação, com as lojas envolvidas e o status delas na hora (sem/des)
+  const out = [];
+  logsBaseRows.forEach(function (r) {
+    if (!ACOES_ATUACAO.test(r.acao)) return;
+    if (r.acao === 'enviar_credenciais_lote') return;   // o lote é contado pelas linhas da Disparos_realizados_email (1 por loja)
+    let cnpjs = [], st = 'sem';
+    const m = r.detalhe.match(/cnpjs:([\d,]+)/); if (m) cnpjs = m[1].split(',').filter(String);
+    const s = r.detalhe.match(/st:(sem|des)/); if (s) st = s[1];
+    if (!m && r.acao === 'resetar_senha') { const c = r.detalhe.match(/^\s*(\d{8,14})/); if (c) cnpjs = [cnpjKeyAtu(c[1])]; }
+    out.push({ t: r.data, email: r.email, equipe: equipeDe(r.email), acao: r.acao, cnpjs: cnpjs, st: st });
+  });
+  // e-mails do lote: linhas da Disparos_realizados_email com Origem = Dash; cada clique (mesma pessoa, mesmo minuto) = 1 ação
+  const lotes = {};
+  (logRows || []).forEach(function (l) {
+    if (String(l['Origem']).trim().toLowerCase() !== 'dash' || String(l['Status']).toUpperCase() !== 'ENVIADO') return;
+    const t = horaLocalAtu(l['Data/Hora']); if (!(t > 0)) return;
+    const em = String(l['Enviado por'] || '').trim().toLowerCase();
+    const k = em + '|' + Math.floor(t / 6e4);
+    const lt = lotes[k] || (lotes[k] = { t: t, email: em, equipe: equipeDe(em), acao: 'enviar_credenciais_lote', cnpjs: [], sts: {} });
+    const c = cnpjKeyAtu(l['CNPJ']); lt.cnpjs.push(c); lt.sts[c] = /desatualizado/i.test(l['Tipo comunicação'] || '') ? 'des' : 'sem';
+  });
+  Object.keys(lotes).forEach(function (k) { const lt = lotes[k]; lt.st = 'sem'; out.push(lt); });
+  return out;
+}
+function preencherPessoasAtu(lista) {
+  const eq = document.getElementById('at-equipe').value, sel = document.getElementById('at-pessoa'), cur = sel.value;
+  const emails = Array.from(new Set(lista.filter(function (a) { return !eq || a.equipe === eq; }).map(function (a) { return a.email; }))).sort();
+  sel.innerHTML = '<option value="">Todas</option>' + emails.map(function (e) { return '<option value="' + atuEsc(e) + '">' + atuEsc(e) + ' · ' + equipeDe(e) + '</option>'; }).join('');
+  sel.value = emails.indexOf(cur) >= 0 ? cur : '';
+}
+async function abrirAtuacao(forcar) {
+  const st = document.getElementById('atuacao-status-msg');
+  if (!document.getElementById('at-de').value) {
+    const ini = new Date(); ini.setDate(ini.getDate() - 13);
+    document.getElementById('at-de').value = dateKey(ini); document.getElementById('at-ate').value = dateKey(new Date());
+  }
+  if (!atuDadosCarregados || forcar) {
+    st.style.display = 'block'; st.textContent = 'Carregando atuações...';
+    await Promise.all([carregarLogsBase(), loadLogEnvios()]);
+    atuDadosCarregados = true; st.style.display = 'none';
+  }
+  renderAtuacao();
+}
+function renderAtuacao() {
+  const de = new Date(document.getElementById('at-de').value + 'T00:00').getTime();
+  const ate = new Date(document.getElementById('at-ate').value + 'T23:59:59').getTime();
+  const jan = +document.getElementById('at-janela').value;
+  const tudo = atuacoesDoLog().filter(function (a) { return a.t >= de && a.t <= ate; });
+  preencherPessoasAtu(tudo);
+  const eq = document.getElementById('at-equipe').value, pes = document.getElementById('at-pessoa').value;
+  const log = tudo.filter(function (a) { return (!eq || a.equipe === eq) && (!pes || a.email === pes); });
+  // situação atual de cada loja (toda a base, não só a carteira)
+  const atual = {};
+  allRowsFull.forEach(function (row) { const l = lojaDe(row); atual[l.cnpj] = { l: l, upd: parseBrDate(row[I_('Ultima Atualização')]) }; });
+  // subiu após a 1ª ação: estava sem (ou desatualizada) e hoje está com estoque (ou em dia), com Última Atualização depois da ação e dentro da janela
+  function subiu(cnpj, t, st) {
+    const a = atual[cnpj]; if (!a || !a.upd) return null;
+    const ok = st === 'des' ? (!a.l.sem && !a.l.des) : (!a.l.sem);
+    if (!ok) return null;
+    const dia = new Date(t); dia.setHours(0, 0, 0, 0);
+    const dif = (a.upd.getTime() - dia.getTime()) / 864e5;
+    return dif >= 0 && dif <= jan ? a.upd : null;
+  }
+  function efet(lista) {
+    const prim = {};
+    lista.forEach(function (a) { a.cnpjs.forEach(function (c) { if (!prim[c] || a.t < prim[c].t) prim[c] = { t: a.t, st: (a.sts && a.sts[c]) || a.st }; }); });
+    const ls = Object.keys(prim), subidas = {};
+    ls.forEach(function (c) { const s = subiu(c, prim[c].t, prim[c].st); if (s) subidas[c] = s; });
+    const sub = Object.keys(subidas).length;
+    return { acoes: lista.length, lojas: ls.length, sub: sub, taxa: ls.length ? sub / ls.length * 100 : 0, subidas: subidas };
+  }
+  const E = efet(log), Eubr = efet(tudo.filter(function (a) { return a.equipe === 'Usadosbr'; })), Ec6 = efet(tudo.filter(function (a) { return a.equipe === 'C6'; }));
+  const filtroTxt = pes || eq || 'todos';
+  const porAcao = {}; log.forEach(function (a) { porAcao[a.acao] = (porAcao[a.acao] || 0) + 1; });
+  function card(cls, l, v, p, chips) { return '<div class="stat-card ' + cls + '"><div class="stat-label">' + atuEsc(l) + '</div><div class="stat-value">' + v + '</div><div class="stat-pct">' + atuEsc(p) + '</div>' + (chips ? '<div class="stat-breakdown">' + chips.map(function (c) { return '<span class="stat-chip">' + atuEsc(c) + '</span>'; }).join('') + '</div>' : '') + '</div>'; }
+  document.getElementById('at-stats').innerHTML =
+    card('', 'Atuações · ' + filtroTxt, E.acoes, 'no período', Object.keys(porAcao).sort(function (a, b) { return porAcao[b] - porAcao[a]; }).slice(0, 3).map(function (k) { return k.replace(/_/g, ' ') + ': ' + porAcao[k]; })) +
+    card('stat-card-c6', 'Lojas atuadas', E.lojas, 'lojas com ao menos 1 ação') +
+    card('stat-card-usadosbr', 'Subiram após atuação', E.sub, Math.round(E.taxa) + '% das atuadas (até ' + jan + ' dias)') +
+    card('', 'Usadosbr x C6', Math.round(Eubr.taxa) + '% x ' + Math.round(Ec6.taxa) + '%', 'efetividade (lojas atuadas que subiram)',
+      ['Usadosbr: ' + Eubr.sub + ' de ' + Eubr.lojas, 'C6: ' + Ec6.sub + ' de ' + Ec6.lojas]);
+  // tabela por pessoa, com subtotal por equipe
+  const pp = {};
+  log.forEach(function (a) { const p = pp[a.email] || (pp[a.email] = { lista: [], acoes: {} }); p.lista.push(a); p.acoes[a.acao] = (p.acoes[a.acao] || 0) + 1; });
+  let rows = '';
+  ['Usadosbr', 'C6'].forEach(function (eqN) {
+    const ks = Object.keys(pp).filter(function (k) { return equipeDe(k) === eqN; });
+    if (!ks.length) return;
+    const tot = efet(log.filter(function (a) { return a.equipe === eqN; }));
+    rows += '<tr class="eq-row"><td><span class="badge ' + (eqN === 'Usadosbr' ? 'b-ubr' : 'b-c6') + '">' + eqN + '</span> ' + ks.length + ' pessoa' + (ks.length > 1 ? 's' : '') + '</td><td class="num">' + tot.acoes + '</td><td class="num">' + tot.lojas + '</td><td class="num">' + tot.sub + '</td><td class="num"><b>' + Math.round(tot.taxa) + '%</b></td><td></td></tr>';
+    ks.map(function (k) { return { email: k, e: efet(pp[k].lista), acoes: pp[k].acoes }; })
+      .sort(function (a, b) { return b.e.sub - a.e.sub || b.e.taxa - a.e.taxa || b.e.acoes - a.e.acoes; })
+      .forEach(function (p) {
+        const top = Object.keys(p.acoes).sort(function (a, b) { return p.acoes[b] - p.acoes[a]; })[0];
+        rows += '<tr><td style="padding-left:26px">' + atuEsc(p.email) + '</td><td class="num">' + p.e.acoes + '</td><td class="num">' + p.e.lojas + '</td><td class="num">' + p.e.sub + '</td><td class="num">' + Math.round(p.e.taxa) + '%</td><td class="sub-linha mono">' + atuEsc(top) + '</td></tr>';
+      });
+  });
+  document.getElementById('at-body').innerHTML = rows || '<tr><td colspan="6" style="color:var(--muted)">Nenhuma atuação registrada nesse período/filtro.</td></tr>';
+  // gráficos
+  if (typeof Chart === 'undefined') return;
+  const dias = [], labs = [];
+  for (let d = new Date(de); d.getTime() <= ate; d.setDate(d.getDate() + 1)) { dias.push(dateKey(d)); labs.push(formatDateBrShort(d)); }
+  const aDia = dias.map(function (k) { return log.filter(function (a) { return dateKey(new Date(a.t)) === k; }).length; });
+  const sDia = dias.map(function (k) { return Object.keys(E.subidas).filter(function (c) { return dateKey(E.subidas[c]) === k; }).length; });
+  const plug = typeof ChartDataLabels !== 'undefined' ? [ChartDataLabels] : [];
+  if (chAtuDia) chAtuDia.destroy();
+  chAtuDia = new Chart(document.getElementById('at-chart-dia'), {
+    data: { labels: labs, datasets: [
+      { type: 'bar', label: 'Atuações', data: aDia, backgroundColor: 'rgba(123,79,214,.35)', borderColor: '#7B4FD6', borderWidth: 1, yAxisID: 'y' },
+      { type: 'line', label: 'Lojas atuadas que subiram', data: sDia, borderColor: '#2E8B57', backgroundColor: '#2E8B57', tension: .3, yAxisID: 'y1' }] },
+    options: { maintainAspectRatio: false, plugins: { title: { display: true, text: 'Atuações x lojas que subiram, por dia — ' + filtroTxt },
+      datalabels: { anchor: 'end', align: 'top', font: { size: 10 }, color: '#444', display: function (c) { return c.dataset.data[c.dataIndex] > 0; } } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Atuações' } }, y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Lojas' } } } },
+    plugins: plug
+  });
+  const labT = ['Usadosbr', 'C6'], valT = [Math.round(Eubr.taxa), Math.round(Ec6.taxa)], corT = ['#00C85B', '#33517A'];
+  if (pes) { labT.push(pes.split('@')[0]); valT.push(Math.round(E.taxa)); corT.push('#7B4FD6'); }
+  if (chAtuTaxa) chAtuTaxa.destroy();
+  chAtuTaxa = new Chart(document.getElementById('at-chart-taxa'), {
+    type: 'bar', data: { labels: labT, datasets: [{ data: valT, backgroundColor: corT }] },
+    options: { maintainAspectRatio: false, plugins: { legend: { display: false }, title: { display: true, text: 'Efetividade: % das lojas atuadas que subiram' },
+      datalabels: { anchor: 'end', align: 'top', formatter: function (v) { return v + '%'; }, font: { weight: 'bold' } } },
+      scales: { y: { beginAtZero: true, max: 100, ticks: { callback: function (v) { return v + '%'; } } } } },
+    plugins: plug
+  });
+}
+document.getElementById('at-equipe').addEventListener('change', renderAtuacao);
+['at-de', 'at-ate', 'at-janela', 'at-pessoa'].forEach(function (id) { document.getElementById(id).addEventListener('change', renderAtuacao); });
+document.getElementById('at-refresh').addEventListener('click', function () { abrirAtuacao(true); });
 
 /* ==================== DADOS ==================== */
 async function loadData() {
@@ -2389,13 +3376,17 @@ async function loadData() {
     const csvText = await res.text();
     const objects = parseCSVToObjects(csvText);
 
-    allRowsFull = objects.map(obj => EXPOSED_HEADERS.map(h => (obj[h] !== undefined ? obj[h] : '')));
+    allRowsFull = objects.map(obj => EXPOSED_HEADERS.map(h => (obj[h] !== undefined ? obj[h] : (h === 'Telefone GN' ? (obj['Envio Atualização Estoque'] || '') : ''))));
     // Padroniza grafia (Primeira Maiúscula) só nas colunas de texto exibidas
     // no Dash — feito uma vez aqui, antes de filtrar por carteira, para que
     // tabela, dropdowns de filtro, CSV/Excel e e-mail usem sempre o mesmo
     // valor normalizado (e não crie opções "duplicadas" no filtro por causa
     // de maiúscula/minúscula diferentes na planilha).
     allRowsFull = applyTitleCaseColumns(allRowsFull);
+    // (17/11/2026) algumas lojas vêm da origem com Senha = "login | senha": mostra/copia só a senha (parte depois do "|")
+    (function () { const iS = EXPOSED_HEADERS.indexOf('Senha'); allRowsFull.forEach(function (r) { r[iS] = limparSenhaOrigem(r[iS]); }); })();
+    // (17/11/2026) mesmo GN com nomes diferentes vira 1 só (telefone + nome) — corrige filtro de GN, ranking e Excel
+    unificarGnsReais(allRowsFull);
 
     if (userRole === 'ultra' || userRole === 'ultra_externo') {
       // Ultra e Ultra Externo veem a carteira de todos, sem restrição
